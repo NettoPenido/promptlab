@@ -47,6 +47,17 @@ function fmtFocus(x: number, y: number) {
   return `${xx}% ${yy}%`;
 }
 
+async function safeReadJson(res: Response): Promise<any> {
+  // Some API routes may return empty body (204) or non-json error pages.
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { _raw: text };
+  }
+}
+
 export default function AdminPage() {
   const [secret, setSecret] = useState("");
   const [authed, setAuthed] = useState(false);
@@ -95,8 +106,12 @@ export default function AdminPage() {
         headers: { "x-admin-secret": secret },
         cache: "no-store",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Erro ao carregar");
+
+      const data = await safeReadJson(res);
+      if (!res.ok) {
+        const msg = data?.error || data?._raw || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
       setItems(data.items || []);
     } catch (e: any) {
       setErr(e.message || "Erro");
@@ -147,8 +162,13 @@ export default function AdminPage() {
           isActive: form.isActive,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Erro ao criar");
+
+      const data = await safeReadJson(res);
+      if (!res.ok) {
+        const msg = data?.error || data?._raw || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+
       setForm({ id: "", title: "", category: "homens", image: "", imageFocus: "50% 25%", prompt: "", isActive: true });
       await fetchItems();
     } catch (e: any) {
@@ -174,8 +194,13 @@ export default function AdminPage() {
           isActive: form.isActive,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Erro ao atualizar");
+
+      const data = await safeReadJson(res);
+      if (!res.ok) {
+        const msg = data?.error || data?._raw || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+
       setForm({ id: "", title: "", category: "homens", image: "", imageFocus: "50% 25%", prompt: "", isActive: true });
       await fetchItems();
     } catch (e: any) {
@@ -191,8 +216,13 @@ export default function AdminPage() {
         method: "DELETE",
         headers: { "x-admin-secret": secret },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Erro ao excluir");
+
+      const data = await safeReadJson(res);
+      if (!res.ok) {
+        const msg = data?.error || data?._raw || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+
       await fetchItems();
     } catch (e: any) {
       setErr(e.message || "Erro");
@@ -255,9 +285,7 @@ export default function AdminPage() {
         <div>
           <div className="text-xs tracking-[0.35em] text-white/60">ADMIN</div>
           <h1 className="mt-2 text-2xl md:text-3xl font-semibold tracking-tight">Dashboard de Prompts</h1>
-          <p className="mt-2 text-white/60 text-sm">
-            Preview + botões de foco (sem adivinhar %).
-          </p>
+          <p className="mt-2 text-white/60 text-sm">Preview + botões de foco (sem adivinhar %).</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -280,7 +308,6 @@ export default function AdminPage() {
         <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
           <div className="text-sm font-semibold">{form.id ? "Editar prompt" : "Novo prompt"}</div>
 
-          {/* Preview */}
           <div className="mt-4 rounded-3xl border border-white/10 bg-black/30 overflow-hidden">
             <div className="px-4 py-3 flex items-center justify-between gap-3">
               <div className="text-xs tracking-[0.35em] text-white/50">PREVIEW DO CARD</div>
@@ -306,8 +333,7 @@ export default function AdminPage() {
                   style={{
                     position: "absolute",
                     inset: 0,
-                    background:
-                      "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0.12), transparent)",
+                    background: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0.12), transparent)",
                   }}
                 />
                 <div
@@ -472,15 +498,7 @@ export default function AdminPage() {
                   </button>
                   <button
                     onClick={() =>
-                      setForm({
-                        id: "",
-                        title: "",
-                        category: "homens",
-                        image: "",
-                        imageFocus: "50% 25%",
-                        prompt: "",
-                        isActive: true,
-                      })
+                      setForm({ id: "", title: "", category: "homens", image: "", imageFocus: "50% 25%", prompt: "", isActive: true })
                     }
                     className="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/5"
                   >
@@ -497,7 +515,7 @@ export default function AdminPage() {
               )}
             </div>
 
-            {err ? <div className="text-sm text-red-300">{err}</div> : null}
+            {err ? <div className="text-sm text-red-300 whitespace-pre-wrap">{err}</div> : null}
           </div>
         </div>
 
