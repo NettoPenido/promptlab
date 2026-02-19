@@ -1,12 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { SITE } from "@/content/prompts";
 
-export default function PromptCopyCard({ prompt }: { prompt: string }) {
+export default function PromptCopyCard({
+  prompt,
+  showLogout = true,
+}: {
+  prompt: string;
+  showLogout?: boolean;
+}) {
   const [hasAccess, setHasAccess] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const teaser = useMemo(() => {
+    const t = (prompt || "").trim();
+    if (!t) return "";
+    return t.length > 260 ? t.slice(0, 260).trimEnd() + "..." : t;
+  }, [prompt]);
 
   useEffect(() => {
     (async () => {
@@ -34,13 +46,14 @@ export default function PromptCopyCard({ prompt }: { prompt: string }) {
           <div>
             <div className="text-lg font-semibold">🔒 Prompt bloqueado</div>
             <p className="text-white/60 text-sm mt-1">
-              O prompt só desbloqueia após a compra aprovada na Hotmart.
+              A imagem é livre. O texto do prompt desbloqueia após a compra aprovada.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <a
               href={SITE.hotmartUrl}
               target="_blank"
+              rel="noreferrer"
               className="rounded-full bg-white text-black px-5 py-2 text-sm font-medium hover:opacity-90"
             >
               Comprar acesso
@@ -55,7 +68,7 @@ export default function PromptCopyCard({ prompt }: { prompt: string }) {
         </div>
 
         <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-4 text-white/70 text-sm">
-          🔒••••••••••••••••••••••••••••••••••
+          {teaser ? <span className="select-none blur-sm whitespace-pre-wrap">{teaser}</span> : "🔒••••••••••••••••••••••••••••••••••"}
         </div>
       </div>
     );
@@ -75,18 +88,20 @@ export default function PromptCopyCard({ prompt }: { prompt: string }) {
 
       <pre className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-white/90">{prompt}</pre>
 
-      <form
-        className="mt-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          await fetch("/api/access/logout", { method: "POST" });
-          setHasAccess(false);
-        }}
-      >
-        <button className="text-xs text-white/50 hover:text-white" type="submit">
-          Sair
-        </button>
-      </form>
+      {showLogout ? (
+        <form
+          className="mt-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            await fetch("/api/access/logout", { method: "POST" });
+            setHasAccess(false);
+          }}
+        >
+          <button className="text-xs text-white/50 hover:text-white" type="submit">
+            Sair
+          </button>
+        </form>
+      ) : null}
     </div>
   );
 }

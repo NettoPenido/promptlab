@@ -1,10 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
-import { PROMPTS, SITE } from "@/content/prompts";
-import PromptCopyCard from "@/components/PromptCopyCard";
+import { SITE } from "@/content/prompts";
+import { getPromptItemById } from "@/lib/promptsData";
 
-export default function PromptPage({ params }: { params: { id: string } }) {
-  const item = PROMPTS.find((p) => p.id === params.id);
+export default async function PromptPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const item: any = await getPromptItemById(id);
 
   if (!item) {
     return (
@@ -19,11 +24,14 @@ export default function PromptPage({ params }: { params: { id: string } }) {
     );
   }
 
+  const teaser =
+    item.prompt.length > 220 ? item.prompt.slice(0, 220).trimEnd() + "..." : item.prompt;
+
   return (
     <main className="min-h-screen bg-black text-white">
       <header className="mx-auto max-w-6xl px-4 py-8 flex items-center justify-between gap-4">
         <Link href={`/categoria/${item.category}`} className="text-white/70 hover:text-white">
-          ← Voltar para {item.category.toUpperCase()}
+          ← Voltar para {String(item.category).toUpperCase()}
         </Link>
 
         <div className="flex items-center gap-2">
@@ -44,7 +52,7 @@ export default function PromptPage({ params }: { params: { id: string } }) {
       </header>
 
       <section className="mx-auto max-w-6xl px-4 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Imagem de demonstração */}
+        {/* Imagem sempre visível */}
         <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
           <div className="relative aspect-[4/5] bg-black">
             <Image
@@ -63,11 +71,58 @@ export default function PromptPage({ params }: { params: { id: string } }) {
             <div className="text-xs tracking-[0.35em] text-white/60">PROMPT</div>
             <h1 className="mt-2 text-2xl md:text-4xl font-semibold tracking-tight">{item.title}</h1>
             <p className="mt-2 text-white/60">
-              Categoria: <span className="text-white">{item.category.toUpperCase()}</span>
+              Categoria: <span className="text-white">{String(item.category).toUpperCase()}</span>
             </p>
           </div>
 
-          <PromptCopyCard prompt={item.prompt} />
+          {/* Cadeado SOMENTE no texto do prompt */}
+          <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
+            <div className="p-4 md:p-5 border-b border-white/10 flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold">🔒 Prompt bloqueado</div>
+              <a
+                href={SITE.hotmartUrl}
+                target="_blank"
+                className="rounded-full bg-white text-black px-4 py-2 text-xs font-semibold hover:opacity-90"
+              >
+                Comprar
+              </a>
+            </div>
+
+            <div className="p-4 md:p-5 relative">
+              <pre className="whitespace-pre-wrap text-sm text-white/70 select-none blur-sm">
+                {teaser}
+              </pre>
+
+              <div className="absolute inset-0 flex items-center justify-center p-6">
+                <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/70 backdrop-blur px-5 py-5 text-center">
+                  <div className="text-base font-semibold">Acesso necessário</div>
+                  <div className="mt-2 text-sm text-white/60">
+                    A imagem é livre. O texto do prompt só desbloqueia após a compra.
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                    <a
+                      href={SITE.hotmartUrl}
+                      target="_blank"
+                      className="rounded-xl bg-white text-black px-5 py-3 text-sm font-semibold hover:opacity-90"
+                    >
+                      Comprar acesso
+                    </a>
+                    <Link
+                      href="/acessar"
+                      className="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                    >
+                      Já comprei (desbloquear)
+                    </Link>
+                  </div>
+
+                  <div className="mt-3 text-xs text-white/50">
+                    Após o desbloqueio, você poderá copiar o prompt completo.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="flex flex-wrap gap-3">
             <a
@@ -86,24 +141,10 @@ export default function PromptPage({ params }: { params: { id: string } }) {
           </div>
 
           <div className="text-xs text-white/50">
-            Dica: após liberar o acesso, use “Copiar” e cole na IA de preferência do cliente.
+            Dica: após liberar o acesso, use “Copiar” e cole na IA de preferência.
           </div>
         </div>
       </section>
-
-      <footer className="border-t border-white/10 py-8">
-        <div className="mx-auto max-w-6xl px-4 text-white/50 text-sm flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
-          <div>
-            © {new Date().getFullYear()} {SITE.brand} — {SITE.tagline}
-          </div>
-          <div>
-            Contato:{" "}
-            <a className="text-white/70 hover:text-white" href={`mailto:${SITE.contactEmail}`}>
-              {SITE.contactEmail}
-            </a>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }
