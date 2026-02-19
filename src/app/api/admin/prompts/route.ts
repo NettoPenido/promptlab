@@ -70,9 +70,21 @@ export async function POST(req: Request) {
         .replace(/(^-|-$)/g, "")
         .slice(0, 80);
 
+    
+const slug =
+  id ||
+  title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
     const created = await prisma.promptItem.create({
+
       data: {
-        id,
+        id: slug,
+        slug,
         title,
         category: category as any,
         imageUrl,
