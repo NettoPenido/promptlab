@@ -8,8 +8,12 @@ function getAdminSecret(req: Request) {
   return header?.trim() || "";
 }
 
-function slugify(text: string) {
-  return text
+function normalizeCategory(input: unknown) {
+  return String(input ?? "").trim().toLowerCase();
+}
+
+function slugify(input: string) {
+  return input
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -20,45 +24,59 @@ function slugify(text: string) {
 
 export async function GET(req: Request) {
   try {
-    const secret = process.env.ADMIN_SECRET || "";
+    const secret = (process.env.ADMIN_SECRET || "").trim();
     if (!secret) return NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 });
 
-    if (getAdminSecret(req) !== secret)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const incoming = getAdminSecret(req);
+    if (!incoming) return NextResponse.json({ error: "Missing x-admin-secret header" }, { status: 401 });
+    if (incoming !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const items = await prisma.promptItem.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }],
     });
 
     return NextResponse.json({ items });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || String(err) }, { status: 500 });
+    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const secret = process.env.ADMIN_SECRET || "";
+    const secret = (process.env.ADMIN_SECRET || "").trim();
     if (!secret) return NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 });
 
-    if (getAdminSecret(req) !== secret)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const incoming = getAdminSecret(req);
+    if (!incoming) return NextResponse.json({ error: "Missing x-admin-secret header" }, { status: 401 });
+    if (incoming !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 
     const title = String(body.title ?? "").trim();
     const prompt = String(body.prompt ?? "").trim();
     const imageUrl = String(body.imageUrl ?? "").trim();
-    const category = String(body.category ?? "").toLowerCase();
+    const category = normalizeCategory(body.category);
 
-    if (!title) return NextResponse.json({ error: "Título obrigatório" }, { status: 400 });
-    if (!prompt) return NextResponse.json({ error: "Prompt obrigatório" }, { status: 400 });
-    if (!imageUrl) return NextResponse.json({ error: "Imagem obrigatória" }, { status: 400 });
+    // UI chama de "Ativo", mas no DB é isPublished
+    const isPublished = Boolean(body.isPublished ?? body.isActive ?? true);
 
-    if (!VALID_CATEGORIES.includes(category as any))
-      return NextResponse.json({ error: "Categoria inválida" }, { status: 400 });
+    const focusX = Number.isFinite(Number(body.focusX)) ? Math.max(0, Math.min(100, Math.round(Number(body.focusX)))) : 50;
+    const focusY = Number.isFinite(Number(body.focusY)) ? Math.max(0, Math.min(100, Math.round(Number(body.focusY)))) : 25;
 
-    const slug = slugify(title);
+    if (!title) return NextResponse.json({ error: "Título obrigatório." }, { status: 400 });
+    if (!prompt) return NextResponse.json({ error: "Prompt obrigatório." }, { status: 400 });
+    if (!imageUrl) return NextResponse.json({ error: "Imagem obrigatória (ex.: /imgs/01-Homem.jpg)." }, { status: 400 });
+
+    if (!VALID_CATEGORIES.includes(category as any)) {
+      return NextResponse.json(
+        { error: `Categoria inválida: "${category}". Use: ${VALID_CATEGORIES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const slug = String(body.slug ?? "").trim() || slugify(String(body.id ?? "").trim() || title);
+    if (!slug) return NextResponse.json({ error: "Slug inválido." }, { status: 400 });
 
     const created = await prisma.promptItem.create({
       data: {
@@ -66,15 +84,16 @@ export async function POST(req: Request) {
         title,
         category,
         imageUrl,
+        focusX,
+        focusY,
         prompt,
-        focusX: Number(body.focusX ?? 50),
-        focusY: Number(body.focusY ?? 25),
-        isPublished: Boolean(body.isActive ?? true),
+        isPublished,
       },
     });
 
-    return NextResponse.json({ item: created });
+    return NextResponse.json({ item: created }, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || String(err) }, { status: 500 });
+    // Se slug duplicar, o Prisma vai acusar unique constraint.
+    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
 }
