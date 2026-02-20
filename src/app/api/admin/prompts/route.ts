@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     const category = normalizeCategory(body.category);
 
     // front pode mandar isActive OU isPublished — aceitamos os dois
-    const isPublished = Boolean(body.isPublished ?? body.isActive ?? true);
+    const isActive = Boolean(body.isActive ?? body.isPublished ?? true);
 
     const focusX = clampPct(body.focusX, 50);
     const focusY = clampPct(body.focusY, 25);
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
         focusX,
         focusY,
         prompt,
-        isPublished,
+        isActive,     // mapeia para isPublished
         sortOrder: nextSort,
       },
     });
@@ -143,7 +143,6 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Envie { items: [{id, sortOrder}, ...] }" }, { status: 400 });
     }
 
-    // update em transação
     await prisma.$transaction(
       items.map((it: any) =>
         prisma.promptItem.update({
