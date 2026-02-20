@@ -13,14 +13,27 @@ function normalizeCategory(input: unknown) {
 }
 
 function slugify(input: string) {
-  return input
-    .toLowerCase()
+  return String(input || "")
     .trim()
+    .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 80);
+}
+
+async function ensureUniqueSlug(base: string) {
+  let slug = base || "item";
+  let i = 1;
+
+  // tenta base, depois base-2, base-3...
+  while (true) {
+    const exists = await prisma.promptItem.findUnique({ where: { slug } });
+    if (!exists) return slug;
+    i += 1;
+    slug = `${base}-${i}`.slice(0, 90);
+  }
 }
 
 export async function GET(req: Request) {
@@ -57,7 +70,8 @@ export async function POST(req: Request) {
     const imageUrl = String(body.imageUrl ?? "").trim();
     const category = normalizeCategory(body.category);
 
-    const isPublished = Boolean(body.isPublished ?? body.isActive ?? true);
+    // no front você chama de isActive, mas no banco é isPublished
+    const isPublished = Boolean(body.isActive ?? true);
 
     const focusX = Number.isFinite(Number(body.focusX))
       ? Math.max(0, Math.min(100, Math.round(Number(body.focusX))))
@@ -78,14 +92,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const slug = slugify(String(body.slug ?? body.id ?? title));
-    if (!slug) return NextResponse.json({ error: "Slug inválido." }, { status: 400 });
+    const requested = String(body.slug ?? body.id ?? "").trim();
+    const baseSlug = slugify(requested || title);
+    const slug = await ensureUniqueSlug(baseSlug);
 
     const created = await prisma.promptItem.create({
       data: {
         slug,
         title,
-        category: category as any,
+        category,
         imageUrl,
         focusX,
         focusY,
