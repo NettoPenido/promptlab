@@ -12,6 +12,11 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum FitMode {
+  cover
+  contain
+}
+
 model AccessGrant {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -43,11 +48,13 @@ model PromptItem {
 
   // ✅ No banco já existe "isPublished".
   // ✅ No código a gente usa "isActive".
-  // Isso mapeia SEM quebrar nada.
   isActive Boolean @default(true) @map("isPublished")
 
   // ✅ ORDEM MANUAL (menor = primeiro)
   sortOrder Int @default(0)
+
+  // ✅ NOVO: como enquadrar no card Netflix
+  fitMode FitMode @default(cover)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
