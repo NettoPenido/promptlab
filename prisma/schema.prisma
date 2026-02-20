@@ -7,8 +7,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // Recommended when using Neon "pooler" URL in DATABASE_URL:
-  // set DIRECT_URL to the NON-pooler connection string
   directUrl = env("DIRECT_URL")
 }
 
@@ -41,18 +39,14 @@ model PromptItem {
   focusX Float @default(50)
   focusY Float @default(50)
 
-  // ✅ No banco já existe "isPublished".
-  // ✅ No código a gente usa "isActive".
-  // Isso mapeia SEM quebrar nada.
+  // mapeia pra coluna existente no Postgres: isPublished
   isActive Boolean @default(true) @map("isPublished")
 
-  // ✅ ORDEM MANUAL (menor = primeiro)
+  // ordem manual (menor = primeiro)
   sortOrder Int @default(0)
 
-  // ✅ Ajuste de enquadramento do card:
-  // "cover" = preenche o card (pode cortar)
-  // "contain" = mostra a imagem inteira (pode ter bordas)
-  // (String propositalmente, pra evitar dor com enum/migrations já tentadas.)
+  // ✅ NOVO: modo de enquadramento (sem enum pra evitar dor)
+  // valores esperados: "cover" | "contain"
   fitMode String @default("cover")
 
   createdAt DateTime @default(now())
