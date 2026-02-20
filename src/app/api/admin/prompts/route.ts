@@ -27,7 +27,6 @@ async function ensureUniqueSlug(base: string) {
   let slug = base || "item";
   let i = 1;
 
-  // tenta base, depois base-2, base-3...
   while (true) {
     const exists = await prisma.promptItem.findUnique({ where: { slug } });
     if (!exists) return slug;
@@ -36,18 +35,32 @@ async function ensureUniqueSlug(base: string) {
   }
 }
 
+function clampPct(n: any, fallback: number) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(v)));
+}
+
+function requireAdmin(req: Request) {
+  const secret = process.env.ADMIN_SECRET || "";
+  if (!secret) {
+    return { ok: false as const, res: NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 }) };
+  }
+  const incoming = getAdminSecret(req);
+  if (incoming !== secret) {
+    return { ok: false as const, res: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+  return { ok: true as const };
+}
+
 export async function GET(req: Request) {
+  const guard = requireAdmin(req);
+  if (!guard.ok) return guard.res;
+
   try {
-    const secret = process.env.ADMIN_SECRET || "";
-    if (!secret) return NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 });
-
-    const incoming = getAdminSecret(req);
-    if (incoming !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
     const items = await prisma.promptItem.findMany({
-      orderBy: [{ createdAt: "desc" }],
+      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
     });
-
     return NextResponse.json({ items });
   } catch (err: any) {
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
@@ -55,13 +68,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const guard = requireAdmin(req);
+  if (!guard.ok) return guard.res;
+
   try {
-    const secret = process.env.ADMIN_SECRET || "";
-    if (!secret) return NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 });
-
-    const incoming = getAdminSecret(req);
-    if (incoming !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 
@@ -70,16 +80,11 @@ export async function POST(req: Request) {
     const imageUrl = String(body.imageUrl ?? "").trim();
     const category = normalizeCategory(body.category);
 
-    // no front você chama de isActive, mas no banco é isPublished
-    const isPublished = Boolean(body.isActive ?? true);
+    // front pode mandar isActive OU isPublished — aceitamos os dois
+    const isPublished = Boolean(body.isPublished ?? body.isActive ?? true);
 
-    const focusX = Number.isFinite(Number(body.focusX))
-      ? Math.max(0, Math.min(100, Math.round(Number(body.focusX))))
-      : 50;
-
-    const focusY = Number.isFinite(Number(body.focusY))
-      ? Math.max(0, Math.min(100, Math.round(Number(body.focusY))))
-      : 25;
+    const focusX = clampPct(body.focusX, 50);
+    const focusY = clampPct(body.focusY, 25);
 
     if (!title) return NextResponse.json({ error: "Título obrigatório." }, { status: 400 });
     if (!prompt) return NextResponse.json({ error: "Prompt obrigatório." }, { status: 400 });
@@ -96,6 +101,10 @@ export async function POST(req: Request) {
     const baseSlug = slugify(requested || title);
     const slug = await ensureUniqueSlug(baseSlug);
 
+    // novo item entra no FINAL (maior sortOrder + 1)
+    const agg = await prisma.promptItem.aggregate({ _max: { sortOrder: true } });
+    const nextSort = (agg._max.sortOrder ?? 0) + 1;
+
     const created = await prisma.promptItem.create({
       data: {
         slug,
@@ -106,10 +115,45 @@ export async function POST(req: Request) {
         focusY,
         prompt,
         isPublished,
+        sortOrder: nextSort,
       },
     });
 
     return NextResponse.json({ item: created }, { status: 201 });
+  } catch (err: any) {
+    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH: salvar ordem manual
+ * Body esperado:
+ * { items: [{ id: "cuid...", sortOrder: 1 }, ...] }
+ */
+export async function PATCH(req: Request) {
+  const guard = requireAdmin(req);
+  if (!guard.ok) return guard.res;
+
+  try {
+    const body = await req.json().catch(() => null);
+    if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+
+    const items = Array.isArray(body.items) ? body.items : null;
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: "Envie { items: [{id, sortOrder}, ...] }" }, { status: 400 });
+    }
+
+    // update em transação
+    await prisma.$transaction(
+      items.map((it: any) =>
+        prisma.promptItem.update({
+          where: { id: String(it.id) },
+          data: { sortOrder: Number(it.sortOrder) },
+        })
+      )
+    );
+
+    return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }

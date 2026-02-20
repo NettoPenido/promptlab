@@ -20,21 +20,27 @@ type Item = {
   focusY: number;
   prompt: string;
   isPublished: boolean;
+  sortOrder: number;
   createdAt?: string;
+  updatedAt?: string;
 };
 
 export default function AdminPage() {
   const [adminSecret, setAdminSecret] = useState("");
+
+  // form
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("homens");
   const [imageUrl, setImageUrl] = useState("");
   const [prompt, setPrompt] = useState("");
   const [isPublished, setIsPublished] = useState(true);
 
+  // focus
   const [focusX, setFocusX] = useState(50);
   const [focusY, setFocusY] = useState(25);
   const [step, setStep] = useState(5);
 
+  // list
   const [items, setItems] = useState<Item[]>([]);
   const [status, setStatus] = useState<string>("");
 
@@ -46,6 +52,14 @@ export default function AdminPage() {
   function saveSecret(v: string) {
     setAdminSecret(v);
     localStorage.setItem("ADMIN_SECRET", v);
+  }
+
+  function clamp(n: number) {
+    return Math.max(0, Math.min(100, Math.round(n)));
+  }
+  function move(dx: number, dy: number) {
+    setFocusX((v) => clamp(v + dx));
+    setFocusY((v) => clamp(v + dy));
   }
 
   async function refresh() {
@@ -61,11 +75,13 @@ export default function AdminPage() {
         headers: { "x-admin-secret": adminSecret.trim() },
         cache: "no-store",
       });
-
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
-      setItems(data.items || []);
+      const list: Item[] = (data.items || []).slice();
+      // garante ordenação no client também
+      list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      setItems(list);
     } catch (e: any) {
       setItems([]);
       setStatus(e?.message || String(e));
@@ -73,19 +89,9 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    // carrega automaticamente quando o secret existir
     if (adminSecret.trim()) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminSecret]);
-
-  function clamp(n: number) {
-    return Math.max(0, Math.min(100, Math.round(n)));
-  }
-
-  function move(dx: number, dy: number) {
-    setFocusX((v) => clamp(v + dx));
-    setFocusY((v) => clamp(v + dy));
-  }
 
   async function create() {
     setStatus("");
@@ -106,7 +112,7 @@ export default function AdminPage() {
           category,
           imageUrl,
           prompt,
-          isPublished, // ✅ agora bate com o Prisma
+          isPublished, // vai para o backend
           focusX,
           focusY,
         }),
@@ -123,6 +129,61 @@ export default function AdminPage() {
 
       await refresh();
       setStatus("Criado ✅");
+    } catch (e: any) {
+      setStatus(e?.message || String(e));
+    }
+  }
+
+  // ===== ORDENAR (Topo / ↑ / ↓) =====
+  function moveIndex(from: number, to: number) {
+    setItems((prev) => {
+      const arr = prev.slice();
+      const item = arr[from];
+      if (!item) return prev;
+      arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      return arr;
+    });
+  }
+
+  function toTop(index: number) {
+    if (index <= 0) return;
+    moveIndex(index, 0);
+  }
+  function up(index: number) {
+    if (index <= 0) return;
+    moveIndex(index, index - 1);
+  }
+  function down(index: number) {
+    if (index >= items.length - 1) return;
+    moveIndex(index, index + 1);
+  }
+
+  async function saveOrder() {
+    setStatus("");
+    try {
+      if (!adminSecret.trim()) {
+        setStatus("Cole o ADMIN_SECRET (obrigatório).");
+        return;
+      }
+
+      // menor sortOrder = aparece primeiro
+      const payload = items.map((it, idx) => ({ id: it.id, sortOrder: idx + 1 }));
+
+      const res = await fetch("/api/admin/prompts", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-admin-secret": adminSecret.trim(),
+        },
+        body: JSON.stringify({ items: payload }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+      await refresh();
+      setStatus("Ordem salva ✅");
     } catch (e: any) {
       setStatus(e?.message || String(e));
     }
@@ -146,7 +207,7 @@ export default function AdminPage() {
           <div>
             <div className="text-xs tracking-[0.35em] text-white/60">ADMIN</div>
             <h1 className="mt-2 text-2xl md:text-4xl font-semibold tracking-tight">Dashboard de Prompts</h1>
-            <p className="mt-2 text-white/60">Preview + botões de foco (sem adivinhar %).</p>
+            <p className="mt-2 text-white/60">Ordene itens com Topo/↑/↓ e clique “Salvar ordem”.</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -163,6 +224,7 @@ export default function AdminPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LEFT: create */}
           <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
             <div className="text-sm font-semibold mb-4">Novo prompt</div>
 
@@ -179,7 +241,7 @@ export default function AdminPage() {
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">Preview</div>
                 <div className="text-xs text-white/50">
-                  Foco atual: {focusX}% {focusY}%
+                  Foco: {focusX}% {focusY}%
                 </div>
               </div>
 
@@ -248,7 +310,7 @@ export default function AdminPage() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Texto do prompt (será bloqueado para não compradores)"
+                placeholder="Texto do prompt"
                 className="h-40 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm outline-none focus:border-white/25"
               />
 
@@ -257,7 +319,10 @@ export default function AdminPage() {
                 Ativo (mostrar no catálogo)
               </label>
 
-              <button onClick={create} className="w-full rounded-2xl bg-white text-black px-5 py-3 text-sm font-semibold hover:opacity-90">
+              <button
+                onClick={create}
+                className="w-full rounded-2xl bg-white text-black px-5 py-3 text-sm font-semibold hover:opacity-90"
+              >
                 Criar
               </button>
 
@@ -265,30 +330,65 @@ export default function AdminPage() {
             </div>
           </section>
 
+          {/* RIGHT: list + ordering */}
           <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-semibold">Lista</div>
-              <div className="text-xs text-white/60">{items.length} itens</div>
+              <div className="text-sm font-semibold">Lista (ordem do catálogo)</div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-white/60">{items.length} itens</div>
+                <button
+                  onClick={saveOrder}
+                  className="rounded-full bg-white text-black px-4 py-2 text-sm font-semibold hover:opacity-90"
+                >
+                  Salvar ordem
+                </button>
+              </div>
             </div>
 
             <div className="mt-4 space-y-2">
               {items.length === 0 ? (
                 <div className="text-white/60 text-sm">Nenhum item ainda.</div>
               ) : (
-                items.map((it) => (
+                items.map((it, idx) => (
                   <div key={it.id} className="rounded-2xl border border-white/10 bg-black/40 p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">{it.title}</div>
-                      <div className="text-xs text-white/50">{it.category}</div>
-                    </div>
-                    <div className="text-xs text-white/50 mt-1">{it.imageUrl}</div>
-                    <div className="text-xs text-white/50 mt-1">
-                      foco: {Math.round(it.focusX)}% {Math.round(it.focusY)}% • {it.isPublished ? "ativo" : "oculto"}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">
+                          {idx + 1}. {it.title}
+                        </div>
+                        <div className="text-xs text-white/50 mt-1">
+                          {it.category} • {it.isPublished ? "ativo" : "oculto"}
+                        </div>
+                        <div className="text-xs text-white/50 mt-1 truncate">{it.imageUrl}</div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => toTop(idx)}
+                          className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
+                        >
+                          Topo
+                        </button>
+                        <button
+                          onClick={() => up(idx)}
+                          className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={() => down(idx)}
+                          className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
+                        >
+                          ↓
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
               )}
             </div>
+
+            {status ? <div className="mt-4 text-sm text-rose-300 whitespace-pre-wrap">{status}</div> : null}
           </section>
         </div>
 
