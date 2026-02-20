@@ -41,11 +41,12 @@ model PromptItem {
   focusX Float @default(50)
   focusY Float @default(50)
 
-  // ✅ No banco existe "isPublished". No código usamos "isActive".
-  isActive Boolean @default(true) @map("isPublished")
-
-  // ✅ ORDEM MANUAL (menor = aparece primeiro)
+  // ✅ Ordem manual do catálogo (menor = aparece primeiro)
   sortOrder Int @default(0)
+
+  // ✅ No banco já existe "isPublished".
+  // ✅ No código a gente usa "isActive".
+  isActive Boolean @default(true) @map("isPublished")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
