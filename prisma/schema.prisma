@@ -29,6 +29,11 @@ model AccessSession {
   expiresAt DateTime
 }
 
+enum FitMode {
+  cover
+  contain
+}
+
 model PromptItem {
   id       String @id @default(cuid())
   slug     String @unique
@@ -49,9 +54,8 @@ model PromptItem {
   // ✅ ORDEM MANUAL (menor = primeiro)
   sortOrder Int @default(0)
 
-  // ✅ AUTO ENQUADRAR
-  // "cover" (padrão Netflix) ou "contain" (mostra tudo, sem recorte)
-  fitMode String @default("cover")
+  // ✅ NOVO: modo de enquadramento automático
+  fitMode FitMode @default(cover)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
