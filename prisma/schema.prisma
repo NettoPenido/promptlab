@@ -29,6 +29,11 @@ model AccessSession {
   expiresAt DateTime
 }
 
+enum FitMode {
+  COVER
+  CONTAIN
+}
+
 model PromptItem {
   id       String @id @default(cuid())
   slug     String @unique
@@ -48,9 +53,8 @@ model PromptItem {
   // ✅ ORDEM MANUAL (menor = primeiro)
   sortOrder Int @default(0)
 
-  // ✅ NOVO: controla como a imagem encaixa no card
-  // "cover" (Netflix padrão) ou "contain" (encaixa inteira)
-  fitMode String @default("cover")
+  // ✅ AUTO ENQUADRAR: COVER (Netflix) ou CONTAIN (mostrar tudo)
+  fitMode FitMode @default(COVER)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
