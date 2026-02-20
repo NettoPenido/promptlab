@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 const VALID_CATEGORIES = ["homens", "mulheres", "infantis", "publicidade"] as const;
 const VALID_FIT = ["cover", "contain"] as const;
+type FitMode = (typeof VALID_FIT)[number];
 
 function getAdminSecret(req: Request) {
   const header = req.headers.get("x-admin-secret") || req.headers.get("X-Admin-Secret");
@@ -42,10 +43,9 @@ function clampPct(n: any, fallback: number) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-function normalizeFitMode(input: any) {
-  const v = String(input ?? "").trim().toLowerCase();
-  if (v === "contain") return "contain";
-  return "cover";
+function normalizeFitMode(v: any): FitMode {
+  const s = String(v ?? "").trim().toLowerCase();
+  return (VALID_FIT as readonly string[]).includes(s) ? (s as FitMode) : "cover";
 }
 
 function requireAdmin(req: Request) {
@@ -87,12 +87,13 @@ export async function POST(req: Request) {
     const imageUrl = String(body.imageUrl ?? "").trim();
     const category = normalizeCategory(body.category);
 
+    // front pode mandar isActive OU isPublished — aceitamos os dois
     const isActive = Boolean(body.isActive ?? body.isPublished ?? true);
 
     const focusX = clampPct(body.focusX, 50);
     const focusY = clampPct(body.focusY, 25);
 
-    const fitMode = normalizeFitMode(body.fitMode); // "cover" | "contain"
+    const fitMode = normalizeFitMode(body.fitMode);
 
     if (!title) return NextResponse.json({ error: "Título obrigatório." }, { status: 400 });
     if (!prompt) return NextResponse.json({ error: "Prompt obrigatório." }, { status: 400 });
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
     const baseSlug = slugify(requested || title);
     const slug = await ensureUniqueSlug(baseSlug);
 
+    // novo item entra no FINAL (maior sortOrder + 1)
     const agg = await prisma.promptItem.aggregate({ _max: { sortOrder: true } });
     const nextSort = (agg._max.sortOrder ?? 0) + 1;
 
@@ -121,72 +123,13 @@ export async function POST(req: Request) {
         focusX,
         focusY,
         prompt,
-        isActive,
+        isActive, // mapeia para isPublished
         sortOrder: nextSort,
-        fitMode, // ✅ agora existe no schema
-      } as any,
+        fitMode,
+      },
     });
 
     return NextResponse.json({ item: created }, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
-  }
-}
-
-/**
- * PUT: editar 1 item
- * Body esperado:
- * { id, title, prompt, imageUrl, category, isActive/isPublished, focusX, focusY, fitMode }
- */
-export async function PUT(req: Request) {
-  const guard = requireAdmin(req);
-  if (!guard.ok) return guard.res;
-
-  try {
-    const body = await req.json().catch(() => null);
-    if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-
-    const id = String(body.id ?? "").trim();
-    if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
-
-    const title = String(body.title ?? "").trim();
-    const prompt = String(body.prompt ?? "").trim();
-    const imageUrl = String(body.imageUrl ?? "").trim();
-    const category = normalizeCategory(body.category);
-
-    const isActive = Boolean(body.isActive ?? body.isPublished ?? true);
-
-    const focusX = clampPct(body.focusX, 50);
-    const focusY = clampPct(body.focusY, 25);
-
-    const fitMode = normalizeFitMode(body.fitMode);
-
-    if (!title) return NextResponse.json({ error: "Título obrigatório." }, { status: 400 });
-    if (!prompt) return NextResponse.json({ error: "Prompt obrigatório." }, { status: 400 });
-    if (!imageUrl) return NextResponse.json({ error: "Imagem obrigatória." }, { status: 400 });
-
-    if (!VALID_CATEGORIES.includes(category as any)) {
-      return NextResponse.json(
-        { error: `Categoria inválida: "${category}". Use: ${VALID_CATEGORIES.join(", ")}` },
-        { status: 400 }
-      );
-    }
-
-    const updated = await prisma.promptItem.update({
-      where: { id },
-      data: {
-        title,
-        prompt,
-        imageUrl,
-        category,
-        isActive,
-        focusX,
-        focusY,
-        fitMode,
-      } as any,
-    });
-
-    return NextResponse.json({ item: updated });
   } catch (err: any) {
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }

@@ -8,7 +8,7 @@ const CATEGORIES = [
   { key: "mulheres", label: "Mulheres" },
   { key: "infantis", label: "Infantis" },
   { key: "publicidade", label: "Publicidade" },
-] as const;
+];
 
 type FitMode = "cover" | "contain";
 
@@ -21,8 +21,7 @@ type Item = {
   focusX: number;
   focusY: number;
   prompt: string;
-  isPublished: boolean; // no retorno pode vir isActive também, a gente trata abaixo
-  isActive?: boolean;
+  isActive: boolean; // vem mapeado do prisma (@map isPublished)
   sortOrder: number;
   fitMode?: FitMode;
   createdAt?: string;
@@ -32,25 +31,33 @@ type Item = {
 export default function AdminPage() {
   const [adminSecret, setAdminSecret] = useState("");
 
-  // form create
+  // form (novo)
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("homens");
   const [imageUrl, setImageUrl] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [isPublished, setIsPublished] = useState(true);
+  const [isActive, setIsActive] = useState(true);
+  const [fitMode, setFitMode] = useState<FitMode>("cover");
 
-  // focus create preview
+  // focus (novo)
   const [focusX, setFocusX] = useState(50);
   const [focusY, setFocusY] = useState(25);
   const [step, setStep] = useState(5);
 
-  // list
+  // list + reorder
   const [items, setItems] = useState<Item[]>([]);
   const [status, setStatus] = useState<string>("");
 
   // edit modal
   const [editing, setEditing] = useState<Item | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCategory, setEditCategory] = useState("homens");
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editPrompt, setEditPrompt] = useState("");
+  const [editIsActive, setEditIsActive] = useState(true);
   const [editFitMode, setEditFitMode] = useState<FitMode>("cover");
+  const [editFocusX, setEditFocusX] = useState(50);
+  const [editFocusY, setEditFocusY] = useState(25);
 
   useEffect(() => {
     const s = localStorage.getItem("ADMIN_SECRET") || "";
@@ -83,19 +90,10 @@ export default function AdminPage() {
         headers: { "x-admin-secret": adminSecret.trim() },
         cache: "no-store",
       });
-
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
-      const list: Item[] = (data.items || []).map((it: any) => {
-        const active = typeof it.isActive === "boolean" ? it.isActive : Boolean(it.isPublished);
-        return {
-          ...it,
-          isPublished: active,
-          fitMode: (String(it.fitMode || "cover").toLowerCase() === "contain" ? "contain" : "cover") as FitMode,
-        };
-      });
-
+      const list: Item[] = (data.items || []).slice();
       list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       setItems(list);
     } catch (e: any) {
@@ -128,10 +126,10 @@ export default function AdminPage() {
           category,
           imageUrl,
           prompt,
-          isPublished,
+          isActive,
           focusX,
           focusY,
-          fitMode: "cover", // default (você pode mudar depois no editar)
+          fitMode,
         }),
       });
 
@@ -141,6 +139,8 @@ export default function AdminPage() {
       setTitle("");
       setImageUrl("");
       setPrompt("");
+      setIsActive(true);
+      setFitMode("cover");
       setFocusX(50);
       setFocusY(25);
 
@@ -207,56 +207,44 @@ export default function AdminPage() {
 
   // ===== EDITAR =====
   function openEdit(it: Item) {
-    setEditing({ ...it });
-    setEditFitMode((it.fitMode || "cover") as FitMode);
+    setEditing(it);
+    setEditTitle(it.title || "");
+    setEditCategory(it.category || "homens");
+    setEditImageUrl(it.imageUrl || "");
+    setEditPrompt(it.prompt || "");
+    setEditIsActive(Boolean(it.isActive));
+    setEditFitMode((it.fitMode as FitMode) || "cover");
+    setEditFocusX(Number.isFinite(Number(it.focusX)) ? Math.round(Number(it.focusX)) : 50);
+    setEditFocusY(Number.isFinite(Number(it.focusY)) ? Math.round(Number(it.focusY)) : 25);
   }
 
   function closeEdit() {
     setEditing(null);
-    setStatus("");
-  }
-
-  function editClampPct(v: any, fallback: number) {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return fallback;
-    return Math.max(0, Math.min(100, Math.round(n)));
-  }
-
-  function autoEnquadrar(mode: FitMode) {
-    if (!editing) return;
-    setEditing({
-      ...editing,
-      focusX: 50,
-      focusY: 50,
-      fitMode: mode,
-    });
-    setEditFitMode(mode);
   }
 
   async function saveEdit() {
     setStatus("");
     try {
+      if (!editing) return;
       if (!adminSecret.trim()) {
         setStatus("Cole o ADMIN_SECRET (obrigatório).");
         return;
       }
-      if (!editing) return;
 
-      const res = await fetch("/api/admin/prompts", {
-        method: "PUT",
+      const res = await fetch(`/api/admin/prompts/${editing.id}`, {
+        method: "PATCH",
         headers: {
           "content-type": "application/json",
           "x-admin-secret": adminSecret.trim(),
         },
         body: JSON.stringify({
-          id: editing.id,
-          title: String(editing.title || "").trim(),
-          prompt: String(editing.prompt || "").trim(),
-          imageUrl: String(editing.imageUrl || "").trim(),
-          category: String(editing.category || "").trim().toLowerCase(),
-          isPublished: Boolean(editing.isPublished),
-          focusX: editClampPct(editing.focusX, 50),
-          focusY: editClampPct(editing.focusY, 25),
+          title: editTitle,
+          category: editCategory,
+          imageUrl: editImageUrl,
+          prompt: editPrompt,
+          isActive: editIsActive,
+          focusX: editFocusX,
+          focusY: editFocusY,
           fitMode: editFitMode,
         }),
       });
@@ -265,37 +253,68 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
       await refresh();
-      setStatus("Salvo ✅");
       closeEdit();
+      setStatus("Editado ✅");
     } catch (e: any) {
       setStatus(e?.message || String(e));
     }
   }
 
-  const previewStyle = useMemo(() => {
-    const fm: FitMode = "cover";
-    return {
+  async function autoFrameEdit(mode: FitMode) {
+    setStatus("");
+    try {
+      if (!editing) return;
+      if (!adminSecret.trim()) {
+        setStatus("Cole o ADMIN_SECRET (obrigatório).");
+        return;
+      }
+
+      const res = await fetch(`/api/admin/prompts/${editing.id}`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-admin-secret": adminSecret.trim(),
+        },
+        body: JSON.stringify({ autoFrame: true, mode }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+      await refresh();
+      setEditFocusX(50);
+      setEditFocusY(50);
+      setEditFitMode(mode);
+
+      setStatus("Auto enquadrar aplicado ✅");
+    } catch (e: any) {
+      setStatus(e?.message || String(e));
+    }
+  }
+
+  const previewStyle = useMemo(
+    () => ({
       backgroundImage: imageUrl
         ? `url(${imageUrl})`
         : "linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02))",
-      backgroundSize: fm === "contain" ? "contain" : "cover",
+      backgroundSize: fitMode === "contain" ? "contain" : "cover",
       backgroundRepeat: "no-repeat",
       backgroundPosition: `${focusX}% ${focusY}%`,
-    } as any;
-  }, [imageUrl, focusX, focusY]);
+    }),
+    [imageUrl, focusX, focusY, fitMode]
+  );
 
-  const editPreviewStyle = useMemo(() => {
-    if (!editing) return {};
-    const bg = editing.imageUrl
-      ? `url(${editing.imageUrl})`
-      : "linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02))";
-    return {
-      backgroundImage: bg,
+  const editPreviewStyle = useMemo(
+    () => ({
+      backgroundImage: editImageUrl
+        ? `url(${editImageUrl})`
+        : "linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02))",
       backgroundSize: editFitMode === "contain" ? "contain" : "cover",
       backgroundRepeat: "no-repeat",
-      backgroundPosition: `${editing.focusX}% ${editing.focusY}%`,
-    } as any;
-  }, [editing, editFitMode]);
+      backgroundPosition: `${editFocusX}% ${editFocusY}%`,
+    }),
+    [editImageUrl, editFocusX, editFocusY, editFitMode]
+  );
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -304,7 +323,9 @@ export default function AdminPage() {
           <div>
             <div className="text-xs tracking-[0.35em] text-white/60">ADMIN</div>
             <h1 className="mt-2 text-2xl md:text-4xl font-semibold tracking-tight">Dashboard de Prompts</h1>
-            <p className="mt-2 text-white/60">Ordene itens com Topo/↑/↓ e clique “Salvar ordem”.</p>
+            <p className="mt-2 text-white/60">
+              Ordene itens com Topo/↑/↓ e clique “Salvar ordem”. Para enquadrar, use “Auto enquadrar” no Editar.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -338,11 +359,11 @@ export default function AdminPage() {
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">Preview</div>
                 <div className="text-xs text-white/50">
-                  Foco: {focusX}% {focusY}%
+                  Foco: {focusX}% {focusY}% • {fitMode}
                 </div>
               </div>
 
-              <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+              <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
                 <div className="aspect-[16/9]" style={previewStyle} />
               </div>
 
@@ -359,6 +380,18 @@ export default function AdminPage() {
                     </option>
                   ))}
                 </select>
+
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-xs text-white/60">Modo</span>
+                  <select
+                    value={fitMode}
+                    onChange={(e) => setFitMode((e.target.value as FitMode) || "cover")}
+                    className="rounded-full border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                  >
+                    <option value="cover">cover</option>
+                    <option value="contain">contain</option>
+                  </select>
+                </div>
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2">
@@ -412,7 +445,7 @@ export default function AdminPage() {
               />
 
               <label className="flex items-center gap-2 text-sm text-white/70">
-                <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
+                <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
                 Ativo (mostrar no catálogo)
               </label>
 
@@ -454,19 +487,19 @@ export default function AdminPage() {
                           {idx + 1}. {it.title}
                         </div>
                         <div className="text-xs text-white/50 mt-1">
-                          {it.category} • {it.isPublished ? "ativo" : "oculto"} • fit: {it.fitMode || "cover"}
+                          {it.category} • {it.isActive ? "ativo" : "oculto"} • {(it.fitMode as any) || "cover"}
                         </div>
                         <div className="text-xs text-white/50 mt-1 truncate">{it.imageUrl}</div>
-
-                        <button
-                          onClick={() => openEdit(it)}
-                          className="mt-2 rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
-                        >
-                          Editar
-                        </button>
                       </div>
 
                       <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => openEdit(it)}
+                          className="rounded-full bg-white text-black px-3 py-1 text-xs font-semibold hover:opacity-90"
+                        >
+                          Editar
+                        </button>
+
                         <button
                           onClick={() => toTop(idx)}
                           className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
@@ -503,13 +536,13 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* MODAL EDIT */}
+      {/* EDIT MODAL */}
       {editing ? (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-[#0b0b0f] p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">Editar prompt</div>
-              <button onClick={closeEdit} className="rounded-full border border-white/10 px-3 py-1 text-sm hover:bg-white/5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-[#0b0b0b] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-semibold">Editar</div>
+              <button onClick={closeEdit} className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5">
                 Fechar
               </button>
             </div>
@@ -521,77 +554,77 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium">Preview</div>
                     <div className="text-xs text-white/50">
-                      {Math.round(editing.focusX)}% {Math.round(editing.focusY)}% • {editFitMode}
+                      Foco: {editFocusX}% {editFocusY}% • {editFitMode}
                     </div>
                   </div>
 
-                  <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+                  <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
                     <div className="aspect-[16/9]" style={editPreviewStyle} />
                   </div>
 
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => autoEnquadrar("contain")}
-                      className="rounded-full bg-white text-black px-3 py-2 text-sm font-semibold hover:opacity-90"
+                      onClick={() => autoFrameEdit("contain")}
+                      className="rounded-full bg-white text-black px-4 py-2 text-xs font-semibold hover:opacity-90"
                     >
-                      Auto enquadrar (contain)
+                      Auto enquadrar (mostrar tudo)
                     </button>
                     <button
-                      onClick={() => autoEnquadrar("cover")}
-                      className="rounded-full border border-white/10 px-3 py-2 text-sm hover:bg-white/5"
+                      onClick={() => autoFrameEdit("cover")}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs hover:bg-white/5"
                     >
-                      Auto enquadrar (cover)
+                      Auto enquadrar (preencher)
                     </button>
-                    <select
-                      value={editFitMode}
-                      onChange={(e) => setEditFitMode(e.target.value as FitMode)}
-                      className="ml-auto rounded-full border border-white/10 bg-black/40 px-3 py-2 text-sm"
-                    >
-                      <option value="cover">cover</option>
-                      <option value="contain">contain</option>
-                    </select>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => setEditing({ ...editing, focusX: clamp(editing.focusX - step) })}
-                      className="rounded-full border border-white/10 py-2 hover:bg-white/5"
-                    >
-                      ← X
-                    </button>
-                    <button
-                      onClick={() => setEditing({ ...editing, focusY: clamp(editing.focusY - step) })}
-                      className="rounded-full border border-white/10 py-2 hover:bg-white/5"
-                    >
-                      ↑ Y
-                    </button>
-                    <button
-                      onClick={() => setEditing({ ...editing, focusX: clamp(editing.focusX + step) })}
-                      className="rounded-full border border-white/10 py-2 hover:bg-white/5"
-                    >
-                      X →
-                    </button>
-                    <button
-                      onClick={() => setEditing({ ...editing, focusY: clamp(editing.focusY + step) })}
-                      className="col-span-3 rounded-full border border-white/10 py-2 hover:bg-white/5"
-                    >
-                      ↓ Y (descer)
-                    </button>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <label className="text-xs text-white/60">
+                      Focus X
+                      <input
+                        type="number"
+                        value={editFocusX}
+                        onChange={(e) => setEditFocusX(clamp(parseInt(e.target.value || "0", 10)))}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="text-xs text-white/60">
+                      Focus Y
+                      <input
+                        type="number"
+                        value={editFocusY}
+                        onChange={(e) => setEditFocusY(clamp(parseInt(e.target.value || "0", 10)))}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-3">
+                    <label className="text-xs text-white/60">
+                      Fit mode
+                      <select
+                        value={editFitMode}
+                        onChange={(e) => setEditFitMode((e.target.value as FitMode) || "cover")}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                      >
+                        <option value="cover">cover</option>
+                        <option value="contain">contain</option>
+                      </select>
+                    </label>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <input
-                  value={editing.title}
-                  onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm outline-none focus:border-white/25"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="Título"
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm outline-none focus:border-white/25"
                 />
 
                 <select
-                  value={editing.category}
-                  onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
                   className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm outline-none focus:border-white/25"
                 >
                   {CATEGORIES.map((c) => (
@@ -602,25 +635,21 @@ export default function AdminPage() {
                 </select>
 
                 <input
-                  value={editing.imageUrl}
-                  onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })}
+                  value={editImageUrl}
+                  onChange={(e) => setEditImageUrl(e.target.value)}
+                  placeholder="Imagem (ex.: /imgs/01-Homem.jpg)"
                   className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm outline-none focus:border-white/25"
-                  placeholder="/imgs/01-Homem.jpg"
                 />
 
                 <textarea
-                  value={editing.prompt}
-                  onChange={(e) => setEditing({ ...editing, prompt: e.target.value })}
-                  className="h-40 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm outline-none focus:border-white/25"
-                  placeholder="Prompt"
+                  value={editPrompt}
+                  onChange={(e) => setEditPrompt(e.target.value)}
+                  placeholder="Texto do prompt"
+                  className="h-48 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm outline-none focus:border-white/25"
                 />
 
                 <label className="flex items-center gap-2 text-sm text-white/70">
-                  <input
-                    type="checkbox"
-                    checked={editing.isPublished}
-                    onChange={(e) => setEditing({ ...editing, isPublished: e.target.checked })}
-                  />
+                  <input type="checkbox" checked={editIsActive} onChange={(e) => setEditIsActive(e.target.checked)} />
                   Ativo (mostrar no catálogo)
                 </label>
 
@@ -628,12 +657,12 @@ export default function AdminPage() {
                   onClick={saveEdit}
                   className="w-full rounded-2xl bg-white text-black px-5 py-3 text-sm font-semibold hover:opacity-90"
                 >
-                  Salvar alterações
+                  Salvar edição
                 </button>
-
-                {status ? <div className="text-sm text-rose-300 whitespace-pre-wrap">{status}</div> : null}
               </div>
             </div>
+
+            {status ? <div className="mt-4 text-sm text-rose-300 whitespace-pre-wrap">{status}</div> : null}
           </div>
         </div>
       ) : null}
