@@ -41,12 +41,13 @@ model PromptItem {
   focusX Float @default(50)
   focusY Float @default(50)
 
-  // ✅ ordem do catálogo: menor aparece primeiro
-  sortOrder Int @default(0)
-
   // ✅ No banco já existe "isPublished".
   // ✅ No código a gente usa "isActive".
+  // Isso mapeia SEM quebrar nada.
   isActive Boolean @default(true) @map("isPublished")
+
+  // ✅ NOVO: controla a ordem no catálogo (menor = primeiro)
+  sortOrder Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
