@@ -29,11 +29,6 @@ model AccessSession {
   expiresAt DateTime
 }
 
-enum FitMode {
-  COVER
-  CONTAIN
-}
-
 model PromptItem {
   id       String @id @default(cuid())
   slug     String @unique
@@ -48,13 +43,15 @@ model PromptItem {
 
   // ✅ No banco já existe "isPublished".
   // ✅ No código a gente usa "isActive".
+  // Isso mapeia SEM quebrar nada.
   isActive Boolean @default(true) @map("isPublished")
 
   // ✅ ORDEM MANUAL (menor = primeiro)
   sortOrder Int @default(0)
 
-  // ✅ AUTO ENQUADRAR: COVER (Netflix) ou CONTAIN (mostrar tudo)
-  fitMode FitMode @default(COVER)
+  // ✅ AUTO ENQUADRAR
+  // "cover" (padrão Netflix) ou "contain" (mostra tudo, sem recorte)
+  fitMode String @default("cover")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
