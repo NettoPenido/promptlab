@@ -16,6 +16,7 @@ function safeImageSrc(src: string) {
   const parts = normalized.split("/").filter(Boolean);
   const filename = parts[parts.length - 1] || "";
 
+  // se alguém colar caminho tipo public/imgs/arquivo.jpg, converte pra /imgs/arquivo.jpg
   if (normalized.toLowerCase().includes("/public/imgs/")) {
     return `/imgs/${filename}`;
   }
@@ -26,19 +27,28 @@ function safeImageSrc(src: string) {
 type Item = {
   id: string;
   title: string;
-  image: string;
-  imageFocus?: string | null;
+
+  // banco / API
+  imageUrl?: string;
+  focusX?: number;
+  focusY?: number;
+
   category?: string;
   prompt?: string;
 };
 
 export default function CategoryGridClient({ items }: { items: Item[] }) {
   const normalized = useMemo(() => {
-    return (items || []).map((it) => ({
-      ...it,
-      image: safeImageSrc(it.image),
-      imageFocus: (it.imageFocus || "50% 25%").trim(),
-    }));
+    return (items || []).map((it) => {
+      const fx = Number.isFinite(Number(it.focusX)) ? Number(it.focusX) : 50;
+      const fy = Number.isFinite(Number(it.focusY)) ? Number(it.focusY) : 25;
+
+      return {
+        ...it,
+        image: safeImageSrc(it.imageUrl || ""),
+        imageFocus: `${fx}% ${fy}%`,
+      };
+    });
   }, [items]);
 
   return (
@@ -51,12 +61,12 @@ export default function CategoryGridClient({ items }: { items: Item[] }) {
           <Link href={`/prompt/${it.id}`} className="block">
             <div className="relative aspect-[16/9]">
               <Image
-                src={it.image}
+                src={(it as any).image}
                 alt={it.title}
                 fill
                 sizes="(max-width: 1024px) 100vw, 33vw"
                 className="transition-transform duration-500 group-hover:scale-[1.06]"
-                style={{ objectFit: "cover", objectPosition: it.imageFocus }}
+                style={{ objectFit: "cover", objectPosition: (it as any).imageFocus }}
               />
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
