@@ -42,9 +42,9 @@ function clampPct(n: any, fallback: number) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-function normalizeFitMode(v: any) {
-  const s = String(v ?? "").trim().toLowerCase();
-  if ((VALID_FIT as any).includes(s)) return s as (typeof VALID_FIT)[number];
+function normalizeFitMode(input: any) {
+  const v = String(input ?? "").trim().toLowerCase();
+  if (v === "contain") return "contain";
   return "cover";
 }
 
@@ -87,12 +87,12 @@ export async function POST(req: Request) {
     const imageUrl = String(body.imageUrl ?? "").trim();
     const category = normalizeCategory(body.category);
 
-    // aceita isActive OU isPublished
     const isActive = Boolean(body.isActive ?? body.isPublished ?? true);
 
     const focusX = clampPct(body.focusX, 50);
     const focusY = clampPct(body.focusY, 25);
-    const fitMode = normalizeFitMode(body.fitMode);
+
+    const fitMode = normalizeFitMode(body.fitMode); // "cover" | "contain"
 
     if (!title) return NextResponse.json({ error: "Título obrigatório." }, { status: 400 });
     if (!prompt) return NextResponse.json({ error: "Prompt obrigatório." }, { status: 400 });
@@ -109,7 +109,6 @@ export async function POST(req: Request) {
     const baseSlug = slugify(requested || title);
     const slug = await ensureUniqueSlug(baseSlug);
 
-    // novo item entra no FINAL
     const agg = await prisma.promptItem.aggregate({ _max: { sortOrder: true } });
     const nextSort = (agg._max.sortOrder ?? 0) + 1;
 
@@ -121,11 +120,11 @@ export async function POST(req: Request) {
         imageUrl,
         focusX,
         focusY,
-        fitMode,
         prompt,
         isActive,
         sortOrder: nextSort,
-      },
+        fitMode, // ✅ agora existe no schema
+      } as any,
     });
 
     return NextResponse.json({ item: created }, { status: 201 });
@@ -135,9 +134,68 @@ export async function POST(req: Request) {
 }
 
 /**
- * PATCH:
- * 1) Salvar ordem: { items: [{ id, sortOrder }, ...] }
- * 2) Editar item / Auto enquadrar: { id: "...", title?, prompt?, imageUrl?, category?, isActive?, focusX?, focusY?, fitMode? }
+ * PUT: editar 1 item
+ * Body esperado:
+ * { id, title, prompt, imageUrl, category, isActive/isPublished, focusX, focusY, fitMode }
+ */
+export async function PUT(req: Request) {
+  const guard = requireAdmin(req);
+  if (!guard.ok) return guard.res;
+
+  try {
+    const body = await req.json().catch(() => null);
+    if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+
+    const id = String(body.id ?? "").trim();
+    if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
+
+    const title = String(body.title ?? "").trim();
+    const prompt = String(body.prompt ?? "").trim();
+    const imageUrl = String(body.imageUrl ?? "").trim();
+    const category = normalizeCategory(body.category);
+
+    const isActive = Boolean(body.isActive ?? body.isPublished ?? true);
+
+    const focusX = clampPct(body.focusX, 50);
+    const focusY = clampPct(body.focusY, 25);
+
+    const fitMode = normalizeFitMode(body.fitMode);
+
+    if (!title) return NextResponse.json({ error: "Título obrigatório." }, { status: 400 });
+    if (!prompt) return NextResponse.json({ error: "Prompt obrigatório." }, { status: 400 });
+    if (!imageUrl) return NextResponse.json({ error: "Imagem obrigatória." }, { status: 400 });
+
+    if (!VALID_CATEGORIES.includes(category as any)) {
+      return NextResponse.json(
+        { error: `Categoria inválida: "${category}". Use: ${VALID_CATEGORIES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const updated = await prisma.promptItem.update({
+      where: { id },
+      data: {
+        title,
+        prompt,
+        imageUrl,
+        category,
+        isActive,
+        focusX,
+        focusY,
+        fitMode,
+      } as any,
+    });
+
+    return NextResponse.json({ item: updated });
+  } catch (err: any) {
+    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH: salvar ordem manual
+ * Body esperado:
+ * { items: [{ id: "cuid...", sortOrder: 1 }, ...] }
  */
 export async function PATCH(req: Request) {
   const guard = requireAdmin(req);
@@ -147,66 +205,21 @@ export async function PATCH(req: Request) {
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 
-    // (1) reorder
-    if (Array.isArray(body.items)) {
-      const items = body.items;
-      if (items.length === 0) {
-        return NextResponse.json({ error: "Envie { items: [{id, sortOrder}, ...] }" }, { status: 400 });
-      }
-
-      await prisma.$transaction(
-        items.map((it: any) =>
-          prisma.promptItem.update({
-            where: { id: String(it.id) },
-            data: { sortOrder: Number(it.sortOrder) },
-          })
-        )
-      );
-
-      return NextResponse.json({ ok: true, mode: "reorder" });
+    const items = Array.isArray(body.items) ? body.items : null;
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: "Envie { items: [{id, sortOrder}, ...] }" }, { status: 400 });
     }
 
-    // (2) update item
-    const id = String(body.id ?? "").trim();
-    if (!id) {
-      return NextResponse.json(
-        { error: "Envie { id: '...', ...campos } para editar OU { items:[...] } para ordenar." },
-        { status: 400 }
-      );
-    }
+    await prisma.$transaction(
+      items.map((it: any) =>
+        prisma.promptItem.update({
+          where: { id: String(it.id) },
+          data: { sortOrder: Number(it.sortOrder) },
+        })
+      )
+    );
 
-    const data: any = {};
-
-    if (body.title !== undefined) data.title = String(body.title ?? "").trim();
-    if (body.prompt !== undefined) data.prompt = String(body.prompt ?? "").trim();
-    if (body.imageUrl !== undefined) data.imageUrl = String(body.imageUrl ?? "").trim();
-
-    if (body.category !== undefined) {
-      const cat = normalizeCategory(body.category);
-      if (!VALID_CATEGORIES.includes(cat as any)) {
-        return NextResponse.json(
-          { error: `Categoria inválida: "${cat}". Use: ${VALID_CATEGORIES.join(", ")}` },
-          { status: 400 }
-        );
-      }
-      data.category = cat;
-    }
-
-    if (body.isActive !== undefined || body.isPublished !== undefined) {
-      data.isActive = Boolean(body.isActive ?? body.isPublished);
-    }
-
-    if (body.focusX !== undefined) data.focusX = clampPct(body.focusX, 50);
-    if (body.focusY !== undefined) data.focusY = clampPct(body.focusY, 25);
-
-    if (body.fitMode !== undefined) data.fitMode = normalizeFitMode(body.fitMode);
-
-    const updated = await prisma.promptItem.update({
-      where: { id },
-      data,
-    });
-
-    return NextResponse.json({ ok: true, mode: "update", item: updated });
+    return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
