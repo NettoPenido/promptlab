@@ -1,3 +1,5 @@
+// Prisma schema for PromptLab (Postgres/Neon)
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -5,6 +7,8 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  // Recommended when using Neon "pooler" URL in DATABASE_URL:
+  // set DIRECT_URL to the NON-pooler connection string
   directUrl = env("DIRECT_URL")
 }
 
@@ -26,15 +30,22 @@ model AccessSession {
 }
 
 model PromptItem {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  category    String
-  title       String
-  prompt      String
-  imageUrl    String
-  focusX      Float    @default(50)
-  focusY      Float    @default(50)
-  isPublished Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id       String @id @default(cuid())
+  slug     String @unique
+
+  category String
+  title    String
+  prompt   String
+  imageUrl String
+
+  focusX Float @default(50)
+  focusY Float @default(50)
+
+  // ✅ No banco já existe "isPublished".
+  // ✅ No código a gente usa "isActive".
+  // Isso mapeia SEM quebrar nada.
+  isActive Boolean @default(true) @map("isPublished")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
