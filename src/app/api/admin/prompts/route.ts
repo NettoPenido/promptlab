@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 const VALID_CATEGORIES = ["homens", "mulheres", "infantis", "publicidade"] as const;
 
 function getAdminSecret(req: Request) {
-  return req.headers.get("x-admin-secret")?.trim() || "";
+  const header = req.headers.get("x-admin-secret") || req.headers.get("X-Admin-Secret");
+  return header?.trim() || "";
 }
 
 function slugify(text: string) {
@@ -13,7 +14,8 @@ function slugify(text: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 80);
 }
 
 export async function GET(req: Request) {
@@ -21,8 +23,8 @@ export async function GET(req: Request) {
     const secret = process.env.ADMIN_SECRET || "";
     if (!secret) return NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 });
 
-    const incoming = getAdminSecret(req);
-    if (incoming !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (getAdminSecret(req) !== secret)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const items = await prisma.promptItem.findMany({
       orderBy: { createdAt: "desc" },
@@ -30,7 +32,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ items });
   } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
+    return NextResponse.json({ error: err?.message || String(err) }, { status: 500 });
   }
 }
 
@@ -39,8 +41,8 @@ export async function POST(req: Request) {
     const secret = process.env.ADMIN_SECRET || "";
     if (!secret) return NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 });
 
-    const incoming = getAdminSecret(req);
-    if (incoming !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (getAdminSecret(req) !== secret)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
 
@@ -53,12 +55,8 @@ export async function POST(req: Request) {
     if (!prompt) return NextResponse.json({ error: "Prompt obrigatório" }, { status: 400 });
     if (!imageUrl) return NextResponse.json({ error: "Imagem obrigatória" }, { status: 400 });
 
-    if (!VALID_CATEGORIES.includes(category as any)) {
+    if (!VALID_CATEGORIES.includes(category as any))
       return NextResponse.json({ error: "Categoria inválida" }, { status: 400 });
-    }
-
-    const focusX = Math.max(0, Math.min(100, Number(body.focusX ?? 50)));
-    const focusY = Math.max(0, Math.min(100, Number(body.focusY ?? 50)));
 
     const slug = slugify(title);
 
@@ -68,15 +66,15 @@ export async function POST(req: Request) {
         title,
         category,
         imageUrl,
-        focusX,
-        focusY,
         prompt,
-        isPublished: true,
+        focusX: Number(body.focusX ?? 50),
+        focusY: Number(body.focusY ?? 25),
+        isPublished: Boolean(body.isActive ?? true),
       },
     });
 
-    return NextResponse.json({ item: created }, { status: 201 });
+    return NextResponse.json({ item: created });
   } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
+    return NextResponse.json({ error: err?.message || String(err) }, { status: 500 });
   }
 }
