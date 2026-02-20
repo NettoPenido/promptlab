@@ -10,8 +10,6 @@ const CATEGORIES = [
   { key: "publicidade", label: "Publicidade" },
 ];
 
-type FitMode = "cover" | "contain";
-
 type Item = {
   id: string;
   slug: string;
@@ -20,10 +18,10 @@ type Item = {
   imageUrl: string;
   focusX: number;
   focusY: number;
+  fitMode?: "cover" | "contain" | string;
   prompt: string;
-  isActive: boolean;
+  isActive: boolean; // vindo do Prisma (mapeado)
   sortOrder: number;
-  fitMode?: FitMode;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -38,7 +36,7 @@ export default function AdminPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [prompt, setPrompt] = useState("");
   const [isActive, setIsActive] = useState(true);
-  const [fitMode, setFitMode] = useState<FitMode>("cover");
+  const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
   // focus
   const [focusX, setFocusX] = useState(50);
@@ -77,25 +75,6 @@ export default function AdminPage() {
     setFitMode("cover");
     setFocusX(50);
     setFocusY(25);
-  }
-
-  function startEdit(it: Item) {
-    setEditingId(it.id);
-    setTitle(it.title || "");
-    setCategory(it.category || "homens");
-    setImageUrl(it.imageUrl || "");
-    setPrompt(it.prompt || "");
-    setIsActive(Boolean(it.isActive));
-    setFitMode((it.fitMode as FitMode) || "cover");
-    setFocusX(Number.isFinite(Number(it.focusX)) ? Math.round(Number(it.focusX)) : 50);
-    setFocusY(Number.isFinite(Number(it.focusY)) ? Math.round(Number(it.focusY)) : 25);
-    setStatus("");
-  }
-
-  function autoEnquadrarLocal() {
-    setFitMode("contain");
-    setFocusX(50);
-    setFocusY(50);
   }
 
   async function refresh() {
@@ -166,7 +145,7 @@ export default function AdminPage() {
     setStatus("");
     try {
       if (!adminSecret.trim()) return setStatus("Cole o ADMIN_SECRET (obrigatório).");
-      if (!editingId) return setStatus("Nenhum item em edição.");
+      if (!editingId) return setStatus("Nenhum item selecionado para editar.");
 
       const res = await fetch("/api/admin/prompts", {
         method: "PATCH",
@@ -190,46 +169,25 @@ export default function AdminPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
+      resetForm();
       await refresh();
-      setStatus("Alterações salvas ✅");
+      setStatus("Salvo ✅");
     } catch (e: any) {
       setStatus(e?.message || String(e));
     }
   }
 
-  async function autoEnquadrarSalvar() {
-    setStatus("");
-    try {
-      if (!adminSecret.trim()) return setStatus("Cole o ADMIN_SECRET (obrigatório).");
-      if (!editingId) return setStatus("Clique em Editar em um item primeiro.");
-
-      // aplica local + salva
-      setFitMode("contain");
-      setFocusX(50);
-      setFocusY(50);
-
-      const res = await fetch("/api/admin/prompts", {
-        method: "PATCH",
-        headers: {
-          "content-type": "application/json",
-          "x-admin-secret": adminSecret.trim(),
-        },
-        body: JSON.stringify({
-          id: editingId,
-          fitMode: "contain",
-          focusX: 50,
-          focusY: 50,
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-
-      await refresh();
-      setStatus("Auto enquadrado ✅");
-    } catch (e: any) {
-      setStatus(e?.message || String(e));
-    }
+  function startEdit(it: Item) {
+    setEditingId(it.id);
+    setTitle(it.title || "");
+    setCategory(it.category || "homens");
+    setImageUrl(it.imageUrl || "");
+    setPrompt(it.prompt || "");
+    setIsActive(Boolean(it.isActive));
+    setFocusX(Number.isFinite(Number(it.focusX)) ? Number(it.focusX) : 50);
+    setFocusY(Number.isFinite(Number(it.focusY)) ? Number(it.focusY) : 25);
+    setFitMode((it.fitMode as any) === "contain" ? "contain" : "cover");
+    setStatus(`Editando: ${it.title}`);
   }
 
   // ===== ORDENAR (Topo / ↑ / ↓) =====
@@ -282,15 +240,72 @@ export default function AdminPage() {
     }
   }
 
+  // ===== AUTO ENQUADRAR (1 clique) =====
+  async function autoEnquadrar(it: Item) {
+    setStatus("");
+    try {
+      if (!adminSecret.trim()) return setStatus("Cole o ADMIN_SECRET (obrigatório).");
+
+      const res = await fetch("/api/admin/prompts", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-admin-secret": adminSecret.trim(),
+        },
+        body: JSON.stringify({
+          id: it.id,
+          focusX: 50,
+          focusY: 50,
+          fitMode: "contain",
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+      await refresh();
+      setStatus("Auto enquadrado ✅ (contain)");
+    } catch (e: any) {
+      setStatus(e?.message || String(e));
+    }
+  }
+
+  async function voltarCover(it: Item) {
+    setStatus("");
+    try {
+      if (!adminSecret.trim()) return setStatus("Cole o ADMIN_SECRET (obrigatório).");
+
+      const res = await fetch("/api/admin/prompts", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-admin-secret": adminSecret.trim(),
+        },
+        body: JSON.stringify({
+          id: it.id,
+          fitMode: "cover",
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+      await refresh();
+      setStatus("Modo Netflix ✅ (cover)");
+    } catch (e: any) {
+      setStatus(e?.message || String(e));
+    }
+  }
+
   const previewStyle = useMemo(
     () => ({
       backgroundImage: imageUrl
         ? `url(${imageUrl})`
         : "linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02))",
-      backgroundRepeat: "no-repeat",
       backgroundSize: fitMode === "contain" ? "contain" : "cover",
+      backgroundRepeat: "no-repeat",
       backgroundPosition: `${focusX}% ${focusY}%`,
-      backgroundColor: "rgba(0,0,0,0.35)",
+      backgroundColor: "rgba(0,0,0,0.6)",
     }),
     [imageUrl, focusX, focusY, fitMode]
   );
@@ -302,7 +317,9 @@ export default function AdminPage() {
           <div>
             <div className="text-xs tracking-[0.35em] text-white/60">ADMIN</div>
             <h1 className="mt-2 text-2xl md:text-4xl font-semibold tracking-tight">Dashboard de Prompts</h1>
-            <p className="mt-2 text-white/60">Ordene itens e use “Auto enquadrar” (1 clique) quando quiser mostrar a imagem inteira.</p>
+            <p className="mt-2 text-white/60">
+              Ordene com Topo/↑/↓ + “Salvar ordem”. Use “Auto enquadrar” para encaixar a imagem inteira.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -316,18 +333,18 @@ export default function AdminPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT */}
+          {/* LEFT: create / edit */}
           <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center justify-between">
               <div className="text-sm font-semibold">{editingId ? "Editar prompt" : "Novo prompt"}</div>
               {editingId ? (
-                <button onClick={resetForm} className="rounded-full border border-white/10 px-4 py-2 text-xs hover:bg-white/5">
+                <button onClick={resetForm} className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5">
                   Cancelar edição
                 </button>
               ) : null}
             </div>
 
-            <label className="block text-xs text-white/60 mb-1">ADMIN_SECRET (obrigatório)</label>
+            <label className="block text-xs text-white/60 mb-1 mt-4">ADMIN_SECRET (obrigatório)</label>
             <input
               value={adminSecret}
               onChange={(e) => saveSecret(e.target.value)}
@@ -340,7 +357,7 @@ export default function AdminPage() {
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">Preview</div>
                 <div className="text-xs text-white/50">
-                  Foco: {focusX}% {focusY}% • fit: {fitMode}
+                  foco: {focusX}% {focusY}% • modo: {fitMode}
                 </div>
               </div>
 
@@ -348,7 +365,7 @@ export default function AdminPage() {
                 <div className="aspect-[16/9]" style={previewStyle} />
               </div>
 
-              <div className="mt-3 flex items-center gap-3 flex-wrap">
+              <div className="mt-3 flex items-center gap-3">
                 <div className="text-xs text-white/60">Passo</div>
                 <select
                   value={step}
@@ -362,31 +379,27 @@ export default function AdminPage() {
                   ))}
                 </select>
 
-                <select
-                  value={fitMode}
-                  onChange={(e) => setFitMode(e.target.value as FitMode)}
-                  className="rounded-full border border-white/10 bg-black/40 px-3 py-2 text-sm"
-                  title="cover = Netflix padrão / contain = mostra tudo"
-                >
-                  <option value="cover">cover (Netflix)</option>
-                  <option value="contain">contain (mostrar tudo)</option>
-                </select>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setFocusX(50);
+                      setFocusY(50);
+                      setFitMode("contain");
+                    }}
+                    className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
+                  >
+                    Auto (preview)
+                  </button>
 
-                <button
-                  onClick={autoEnquadrarLocal}
-                  className="rounded-full border border-white/10 px-4 py-2 text-xs hover:bg-white/5"
-                  title="Define contain + foco 50/50 (local)"
-                >
-                  Auto enquadrar (local)
-                </button>
-
-                <button
-                  onClick={autoEnquadrarSalvar}
-                  className="rounded-full bg-white text-black px-4 py-2 text-xs font-semibold hover:opacity-90"
-                  title="Salva no banco (item em edição)"
-                >
-                  Auto enquadrar (SALVAR)
-                </button>
+                  <select
+                    value={fitMode}
+                    onChange={(e) => setFitMode(e.target.value as any)}
+                    className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-xs"
+                  >
+                    <option value="cover">cover (Netflix)</option>
+                    <option value="contain">contain (inteira)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2">
@@ -444,13 +457,13 @@ export default function AdminPage() {
                 Ativo (mostrar no catálogo)
               </label>
 
-              {editingId ? (
-                <button onClick={saveEdit} className="w-full rounded-2xl bg-white text-black px-5 py-3 text-sm font-semibold hover:opacity-90">
-                  Salvar alterações
-                </button>
-              ) : (
+              {!editingId ? (
                 <button onClick={create} className="w-full rounded-2xl bg-white text-black px-5 py-3 text-sm font-semibold hover:opacity-90">
                   Criar
+                </button>
+              ) : (
+                <button onClick={saveEdit} className="w-full rounded-2xl bg-white text-black px-5 py-3 text-sm font-semibold hover:opacity-90">
+                  Salvar edição
                 </button>
               )}
 
@@ -458,7 +471,7 @@ export default function AdminPage() {
             </div>
           </section>
 
-          {/* RIGHT */}
+          {/* RIGHT: list + ordering + actions */}
           <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm font-semibold">Lista (ordem do catálogo)</div>
@@ -488,10 +501,6 @@ export default function AdminPage() {
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <button onClick={() => startEdit(it)} className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5">
-                          Editar
-                        </button>
-
                         <button onClick={() => toTop(idx)} className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5">
                           Topo
                         </button>
@@ -500,6 +509,29 @@ export default function AdminPage() {
                         </button>
                         <button onClick={() => down(idx)} className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5">
                           ↓
+                        </button>
+
+                        <div className="h-px bg-white/10 my-1" />
+
+                        <button
+                          onClick={() => startEdit(it)}
+                          className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          onClick={() => autoEnquadrar(it)}
+                          className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
+                        >
+                          Auto enquadrar
+                        </button>
+
+                        <button
+                          onClick={() => voltarCover(it)}
+                          className="rounded-full border border-white/10 px-3 py-1 text-xs hover:bg-white/5"
+                        >
+                          Voltar cover
                         </button>
                       </div>
                     </div>

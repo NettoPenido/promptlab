@@ -45,7 +45,7 @@ function clampPct(n: any, fallback: number) {
 function normalizeFitMode(v: any) {
   const s = String(v ?? "").trim().toLowerCase();
   if ((VALID_FIT as any).includes(s)) return s as (typeof VALID_FIT)[number];
-  return "cover" as const;
+  return "cover";
 }
 
 function requireAdmin(req: Request) {
@@ -87,6 +87,7 @@ export async function POST(req: Request) {
     const imageUrl = String(body.imageUrl ?? "").trim();
     const category = normalizeCategory(body.category);
 
+    // aceita isActive OU isPublished
     const isActive = Boolean(body.isActive ?? body.isPublished ?? true);
 
     const focusX = clampPct(body.focusX, 50);
@@ -108,7 +109,7 @@ export async function POST(req: Request) {
     const baseSlug = slugify(requested || title);
     const slug = await ensureUniqueSlug(baseSlug);
 
-    // novo item entra no FINAL (maior sortOrder + 1)
+    // novo item entra no FINAL
     const agg = await prisma.promptItem.aggregate({ _max: { sortOrder: true } });
     const nextSort = (agg._max.sortOrder ?? 0) + 1;
 
@@ -120,10 +121,10 @@ export async function POST(req: Request) {
         imageUrl,
         focusX,
         focusY,
+        fitMode,
         prompt,
         isActive,
         sortOrder: nextSort,
-        fitMode,
       },
     });
 
@@ -135,10 +136,8 @@ export async function POST(req: Request) {
 
 /**
  * PATCH:
- * A) salvar ordem manual:
- *    { items: [{ id: "cuid...", sortOrder: 1 }, ...] }
- * B) editar um item:
- *    { id: "cuid...", title?, category?, imageUrl?, prompt?, isActive?, focusX?, focusY?, fitMode? }
+ * 1) Salvar ordem: { items: [{ id, sortOrder }, ...] }
+ * 2) Editar item / Auto enquadrar: { id: "...", title?, prompt?, imageUrl?, category?, isActive?, focusX?, focusY?, fitMode? }
  */
 export async function PATCH(req: Request) {
   const guard = requireAdmin(req);
@@ -148,7 +147,7 @@ export async function PATCH(req: Request) {
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 
-    // A) reorder
+    // (1) reorder
     if (Array.isArray(body.items)) {
       const items = body.items;
       if (items.length === 0) {
@@ -164,45 +163,50 @@ export async function PATCH(req: Request) {
         )
       );
 
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, mode: "reorder" });
     }
 
-    // B) edit item
+    // (2) update item
     const id = String(body.id ?? "").trim();
-    if (!id) return NextResponse.json({ error: "Envie um id para editar (ex.: { id, title, ... })" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json(
+        { error: "Envie { id: '...', ...campos } para editar OU { items:[...] } para ordenar." },
+        { status: 400 }
+      );
+    }
 
     const data: any = {};
 
-    if (body.title != null) data.title = String(body.title).trim();
-    if (body.prompt != null) data.prompt = String(body.prompt).trim();
-    if (body.imageUrl != null) data.imageUrl = String(body.imageUrl).trim();
+    if (body.title !== undefined) data.title = String(body.title ?? "").trim();
+    if (body.prompt !== undefined) data.prompt = String(body.prompt ?? "").trim();
+    if (body.imageUrl !== undefined) data.imageUrl = String(body.imageUrl ?? "").trim();
 
-    if (body.category != null) {
-      const category = normalizeCategory(body.category);
-      if (!VALID_CATEGORIES.includes(category as any)) {
+    if (body.category !== undefined) {
+      const cat = normalizeCategory(body.category);
+      if (!VALID_CATEGORIES.includes(cat as any)) {
         return NextResponse.json(
-          { error: `Categoria inválida: "${category}". Use: ${VALID_CATEGORIES.join(", ")}` },
+          { error: `Categoria inválida: "${cat}". Use: ${VALID_CATEGORIES.join(", ")}` },
           { status: 400 }
         );
       }
-      data.category = category;
+      data.category = cat;
     }
 
-    if (body.isActive != null || body.isPublished != null) {
+    if (body.isActive !== undefined || body.isPublished !== undefined) {
       data.isActive = Boolean(body.isActive ?? body.isPublished);
     }
 
-    if (body.focusX != null) data.focusX = clampPct(body.focusX, 50);
-    if (body.focusY != null) data.focusY = clampPct(body.focusY, 25);
+    if (body.focusX !== undefined) data.focusX = clampPct(body.focusX, 50);
+    if (body.focusY !== undefined) data.focusY = clampPct(body.focusY, 25);
 
-    if (body.fitMode != null) data.fitMode = normalizeFitMode(body.fitMode);
+    if (body.fitMode !== undefined) data.fitMode = normalizeFitMode(body.fitMode);
 
     const updated = await prisma.promptItem.update({
       where: { id },
       data,
     });
 
-    return NextResponse.json({ item: updated });
+    return NextResponse.json({ ok: true, mode: "update", item: updated });
   } catch (err: any) {
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }

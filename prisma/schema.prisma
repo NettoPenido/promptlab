@@ -12,11 +12,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum FitMode {
-  cover
-  contain
-}
-
 model AccessGrant {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -53,8 +48,9 @@ model PromptItem {
   // ✅ ORDEM MANUAL (menor = primeiro)
   sortOrder Int @default(0)
 
-  // ✅ NOVO: como enquadrar no card Netflix
-  fitMode FitMode @default(cover)
+  // ✅ NOVO: controla como a imagem encaixa no card
+  // "cover" (Netflix padrão) ou "contain" (encaixa inteira)
+  fitMode String @default("cover")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
