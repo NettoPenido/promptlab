@@ -114,7 +114,7 @@ export async function POST(req: Request) {
         focusX,
         focusY,
         prompt,
-        isActive,     // mapeia para isPublished
+        isActive,        // mapeia p/ isPublished
         sortOrder: nextSort,
       },
     });

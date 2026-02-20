@@ -79,7 +79,6 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
       const list: Item[] = (data.items || []).slice();
-      // garante ordenação no client também
       list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       setItems(list);
     } catch (e: any) {
@@ -112,7 +111,7 @@ export default function AdminPage() {
           category,
           imageUrl,
           prompt,
-          isPublished, // vai para o backend
+          isPublished,
           focusX,
           focusY,
         }),
@@ -167,7 +166,6 @@ export default function AdminPage() {
         return;
       }
 
-      // menor sortOrder = aparece primeiro
       const payload = items.map((it, idx) => ({ id: it.id, sortOrder: idx + 1 }));
 
       const res = await fetch("/api/admin/prompts", {
