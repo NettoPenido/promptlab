@@ -41,6 +41,9 @@ model PromptItem {
   focusX Float @default(50)
   focusY Float @default(50)
 
+  // ✅ NOVO: ordem manual (maior = aparece primeiro)
+  sortOrder Int @default(0)
+
   // ✅ No banco já existe "isPublished".
   // ✅ No código a gente usa "isActive".
   // Isso mapeia SEM quebrar nada.
