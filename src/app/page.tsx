@@ -4,24 +4,15 @@ import type React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  Copy,
-  ExternalLink,
-  Image as ImageIcon,
-  Lock,
-  ShieldCheck,
-  Sparkles,
-  Zap,
-} from "lucide-react";
+import { ArrowRight, Copy, ExternalLink, Image as ImageIcon, Lock, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SITE } from "@/content/prompts";
 
 const TIKTOK_URL = "https://www.tiktok.com/@mundopromptia";
 
 // ✅ Troque estes arquivos em /public quando quiser (mantendo o mesmo nome)
-const HERO_IMAGE = "/hero-waldir-bmw.jpg"; // sua foto grande no topo
-const HERO_BG = "/hero-city-bg.jpg"; // opcional: fundo extra
+const HERO_IMAGE = "/hero-waldir-bmw.jpg"; // sua foto grande no topo (substitua pelo seu arquivo)
+const HERO_BG = "/hero-city-bg.jpg"; // opcional: fundo extra (substitua se quiser)
 
 function TikTokIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -39,22 +30,39 @@ const fadeUp = {
   visible: (d = 0) => ({ opacity: 1, y: 0, transition: { delay: d, duration: 0.6 } }),
 };
 
-// Favicon/Logo “sem fundo” via Google (não precisa baixar imagem)
-function googleFavicon(domain: string, size = 64) {
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}`;
-}
-
 const AI_TOOLS = [
   { name: "ChatGPT", url: "https://chatgpt.com", domain: "chatgpt.com" },
   { name: "Gemini", url: "https://gemini.google.com", domain: "gemini.google.com" },
-  { name: "Leonardo AI", url: "https://leonardo.ai", domain: "leonardo.ai" },
+  { name: "Leonardo", url: "https://leonardo.ai", domain: "leonardo.ai" },
   { name: "Midjourney", url: "https://www.midjourney.com", domain: "midjourney.com" },
   { name: "Adobe Firefly", url: "https://firefly.adobe.com", domain: "firefly.adobe.com" },
 ];
 
-export default function HomePage() {
-  const hotmartPay = (SITE as any).hotmartPayUrl || SITE.hotmartUrl;
+function FaviconPill({ name, url, domain }: { name: string; url: string; domain: string }) {
+  const icon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/85 hover:bg-white/10"
+      title={name}
+    >
+      <img
+        src={icon}
+        alt=""
+        width={18}
+        height={18}
+        className="h-[18px] w-[18px] rounded-sm"
+        loading="lazy"
+      />
+      {name}
+      <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+    </a>
+  );
+}
 
+export default function HomePage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05060a] text-white">
       {/* Cinematic background */}
@@ -92,9 +100,9 @@ export default function HomePage() {
             <ExternalLink className="h-4 w-4 opacity-60" />
           </a>
 
-          {/* ✅ Botão premium com destaque neon */}
+          {/* ✅ Destaque neon */}
           <a
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-400/95 px-4 py-2 text-sm font-semibold text-black shadow-[0_0_0_1px_rgba(16,185,129,0.55),0_0_28px_rgba(16,185,129,0.22)] hover:bg-emerald-300"
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-2 text-sm font-extrabold text-black hover:bg-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.35),0_10px_30px_rgba(16,185,129,0.25)]"
             href={SITE.hotmartUrl}
             target="_blank"
             rel="noreferrer"
@@ -104,7 +112,7 @@ export default function HomePage() {
         </nav>
       </header>
 
-      {/* HERO */}
+      {/* HERO - imagem grande estilo referência */}
       <section className="relative mx-auto max-w-6xl px-6 pb-10 pt-4 md:pb-16 md:pt-6">
         <div className="grid gap-10 md:grid-cols-2 md:items-center">
           <motion.div initial="hidden" animate="visible" variants={fadeUp} className="space-y-6">
@@ -123,12 +131,12 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              {/* ✅ Botão premium com destaque neon */}
+              {/* ✅ Destaque neon */}
               <a
                 href={SITE.hotmartUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-400/95 px-5 py-3 text-sm font-semibold text-black shadow-[0_0_0_1px_rgba(16,185,129,0.55),0_0_34px_rgba(16,185,129,0.18)] hover:bg-emerald-300"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-extrabold text-black hover:bg-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.35),0_10px_30px_rgba(16,185,129,0.25)]"
               >
                 COMPRAR ACESSO PREMIUM <ArrowRight className="h-4 w-4" />
               </a>
@@ -181,48 +189,46 @@ export default function HomePage() {
             aprovado via Hotmart.
           </p>
 
-          {/* ✅ IAs (logos clicáveis) — EXATAMENTE logo abaixo de CATEGORIAS */}
+          {/* ✅ AQUI: IAs (logos clicáveis) — logo abaixo de CATEGORIAS (igual seu print) */}
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            {AI_TOOLS.map((tool) => (
-              <a
-                key={tool.name}
-                href={tool.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
-                title={`Abrir ${tool.name}`}
-              >
-                <span className="relative h-5 w-5 overflow-hidden rounded-full ring-1 ring-white/10 bg-transparent">
-                  <Image src={googleFavicon(tool.domain, 64)} alt="" fill className="object-contain" />
-                </span>
-                {tool.name}
-                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-              </a>
+            <div className="mr-2 text-xs font-semibold text-white/55 tracking-[0.25em]">ABRIR NA IA</div>
+            {AI_TOOLS.map((t) => (
+              <FaviconPill key={t.name} name={t.name} url={t.url} domain={t.domain} />
             ))}
           </div>
 
-          {/* ✅ Oferta: prompt individual (R$ 4,99) — uma linha abaixo do enunciado */}
-          <div className="mt-5 rounded-3xl border border-white/10 bg-emerald-400/10 p-5 ring-1 ring-emerald-300/25 shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
+          {/* ✅ AQUI: Oferta R$ 4,99 (1 linha abaixo do enunciado) */}
+          <div className="mt-5 rounded-3xl border border-emerald-400/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(34,211,238,0.06))] p-5 ring-1 ring-white/10 shadow-[0_12px_60px_rgba(16,185,129,0.12)]">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-xs tracking-[0.35em] text-emerald-200/90">NOVIDADE</div>
-                <div className="mt-2 text-lg font-semibold tracking-tight">
-                  Quer só 1 prompt específico?{" "}
-                  <span className="text-emerald-200">Compre individual por R$ 4,99</span>
+              <div className="min-w-0">
+                <div className="text-xs tracking-[0.35em] text-emerald-200/80">NOVIDADE</div>
+                <div className="mt-2 text-lg font-semibold tracking-tight text-white">
+                  Quer só 1 prompt específico? <span className="text-emerald-300">Compre avulso por R$ 4,99</span>
                 </div>
-                <p className="mt-1 text-sm text-white/70">
-                  Você escolhe o prompt, eu te envio o link correspondente e libero o acesso desse item.
-                </p>
+                <div className="mt-1 text-sm text-white/70">
+                  Você escolhe o prompt pelo título. Eu te mando o link do prompt avulso e libero o acesso do item solicitado.
+                </div>
               </div>
 
-              <a
-                href={`mailto:${SITE.contactEmail}?subject=${encodeURIComponent("Quero comprar 1 prompt (R$ 4,99)")}&body=${encodeURIComponent(
-                  "Oi! Quero comprar 1 prompt individual por R$ 4,99.\n\nMe diga qual categoria e o nome do prompt:\n- Categoria:\n- Nome do prompt:\n\nMeu email para liberar acesso é:\n"
-                )}`}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-400/95 px-5 py-3 text-sm font-semibold text-black hover:bg-emerald-300"
-              >
-                Solicitar por e-mail <ArrowRight className="h-4 w-4" />
-              </a>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={`mailto:${SITE.contactEmail}?subject=${encodeURIComponent("Compra de prompt individual (R$ 4,99)")}&body=${encodeURIComponent(
+                    "Olá! Quero comprar 1 prompt individual por R$ 4,99.\n\nTítulo do prompt: \nCategoria (homens/mulheres/infantis/publicidade): \n\nObrigado!"
+                  )}`}
+                  className="inline-flex items-center justify-center rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-extrabold text-black hover:bg-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.35),0_10px_30px_rgba(16,185,129,0.25)]"
+                >
+                  Solicitar por e-mail <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+
+                <a
+                  href={SITE.hotmartUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-2xl bg-white/7 px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/12 hover:bg-white/10"
+                >
+                  Ver premium
+                </a>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -322,8 +328,7 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="mt-4 text-white/70 md:text-lg">
-              A diferença entre quem cresce e quem trava está em saber usar as ferramentas certas — e ter prompts
-              prontos, testados e organizados.
+              A diferença entre quem cresce e quem trava está em saber usar as ferramentas certas — e ter prompts prontos, testados e organizados.
             </p>
 
             <div className="mt-6 grid gap-3 text-sm text-white/70">
@@ -367,8 +372,8 @@ export default function HomePage() {
               ?
             </h2>
             <p className="mt-4 text-white/70 md:text-lg">
-              Especialista em IA e Marketing Digital para Negócios | MBA em Engenharia de Prompt | Consultor Estratégico
-              | Ajudo Empresas a Crescer com IA e Marketing Digital | Gestor de Tráfego | Automação | Performance e Escala
+              Especialista em IA e Marketing Digital para Negócios | MBA em Engenharia de Prompt | Consultor Estratégico | Ajudo Empresas a Crescer
+              com IA e Marketing Digital | Gestor de Tráfego | Automação | Performance e Escala
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -396,13 +401,7 @@ export default function HomePage() {
 
           <motion.div variants={fadeUp} custom={0.1} initial="hidden" whileInView="visible" viewport={{ once: true }}>
             <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_20px_80px_rgba(0,0,0,0.55)]">
-              <Image
-                src="/sections/waldir-portrait.jpg"
-                alt="Waldir Penido"
-                width={900}
-                height={1100}
-                className="h-full w-full object-cover"
-              />
+              <Image src="/sections/waldir-portrait.jpg" alt="Waldir Penido" width={900} height={1100} className="h-full w-full object-cover" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(217,70,239,0.18),transparent_42%),radial-gradient(circle_at_90%_30%,rgba(34,211,238,0.16),transparent_45%)]" />
             </div>
           </motion.div>
@@ -420,8 +419,8 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="mt-4 text-white/70 md:text-lg">
-              Sabe aquela foto antiga da família, casamento, formatura… com baixa qualidade? Aqui você encontra prompts
-              prontos para restaurar, colorizar e melhorar nitidez mantendo a identidade e os detalhes originais.
+              Sabe aquela foto antiga da família, casamento, formatura… com baixa qualidade? Aqui você encontra prompts prontos para restaurar,
+              colorizar e melhorar nitidez mantendo a identidade e os detalhes originais.
             </p>
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
               <div className="flex items-center gap-2 font-medium text-white/80">
@@ -463,8 +462,8 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="mt-4 text-white/70 md:text-lg">
-              Crie imagens de performance, transformação, campanhas fitness e conteúdo para redes sociais sem perder
-              características físicas e identidade visual.
+              Crie imagens de performance, transformação, campanhas fitness e conteúdo para redes sociais sem perder características físicas e
+              identidade visual.
             </p>
 
             <div className="mt-6 grid gap-3 text-sm text-white/70">
@@ -583,12 +582,12 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {/* ✅ Botão premium com destaque */}
+            {/* ✅ neon */}
             <a
-              href={hotmartPay}
+              href={SITE.hotmartUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-400/95 px-5 py-3 text-sm font-semibold text-black shadow-[0_0_0_1px_rgba(16,185,129,0.55),0_0_34px_rgba(16,185,129,0.18)] hover:bg-emerald-300"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-5 py-3 text-sm font-extrabold text-black hover:bg-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.35),0_10px_30px_rgba(16,185,129,0.25)]"
             >
               Comprar premium <ArrowRight className="h-4 w-4" />
             </a>
@@ -626,12 +625,12 @@ export default function HomePage() {
               <ExternalLink className="h-4 w-4 opacity-60" />
             </a>
 
-            {/* ✅ Botão premium com destaque neon */}
+            {/* ✅ neon */}
             <a
               href={SITE.hotmartUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-400/95 px-4 py-2 font-semibold text-black shadow-[0_0_0_1px_rgba(16,185,129,0.55),0_0_30px_rgba(16,185,129,0.18)] hover:bg-emerald-300"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-2 font-extrabold text-black hover:bg-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.35),0_10px_30px_rgba(16,185,129,0.25)]"
             >
               Comprar premium <ArrowRight className="h-4 w-4" />
             </a>
