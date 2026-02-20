@@ -1,0 +1,8 @@
+Comando do PowerShell
+
+Toda vez que colocar fotos na pasta
+git status
+git add public/imgs
+git commit -m "chore: add new prompt images"
+git push
+

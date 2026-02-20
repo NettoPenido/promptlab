@@ -3,6 +3,16 @@ import Link from "next/link";
 import { SITE } from "@/content/prompts";
 import { getPromptItemById } from "@/lib/promptsData";
 
+function safeImage(src?: string) {
+  const s = String(src || "").trim();
+  if (!s) return "/imgs/placeholder.jpg";
+  if (s.startsWith("http")) return s;
+  if (s.startsWith("/")) return s;
+
+  const parts = s.replace(/\\/g, "/").split("/");
+  return `/imgs/${parts[parts.length - 1]}`;
+}
+
 export default async function PromptPage({
   params,
 }: {
@@ -23,6 +33,8 @@ export default async function PromptPage({
       </main>
     );
   }
+
+  const imageSrc = safeImage(item.imageUrl);
 
   const teaser =
     item.prompt.length > 220 ? item.prompt.slice(0, 220).trimEnd() + "..." : item.prompt;
@@ -52,20 +64,23 @@ export default async function PromptPage({
       </header>
 
       <section className="mx-auto max-w-6xl px-4 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Imagem sempre visível */}
+        {/* Imagem */}
         <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
           <div className="relative aspect-[4/5] bg-black">
             <Image
-              src={item.image}
+              src={imageSrc}
               alt={item.title}
               fill
-              className="object-cover opacity-95"
               sizes="(max-width: 1024px) 100vw, 50vw"
-              quality={70}
+              style={{
+                objectFit: item.fitMode === "contain" ? "contain" : "cover",
+                objectPosition: `${item.focusX ?? 50}% ${item.focusY ?? 25}%`,
+              }}
             />
           </div>
         </div>
 
+        {/* Conteúdo */}
         <div className="flex flex-col gap-4">
           <div>
             <div className="text-xs tracking-[0.35em] text-white/60">PROMPT</div>
@@ -75,20 +90,13 @@ export default async function PromptPage({
             </p>
           </div>
 
-          {/* Cadeado SOMENTE no texto do prompt */}
+          {/* Cadeado */}
           <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
-            <div className="p-4 md:p-5 border-b border-white/10 flex items-center justify-between gap-3">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
               <div className="text-sm font-semibold">🔒 Prompt bloqueado</div>
-              <a
-                href={SITE.hotmartUrl}
-                target="_blank"
-                className="rounded-full bg-white text-black px-4 py-2 text-xs font-semibold hover:opacity-90"
-              >
-                Comprar
-              </a>
             </div>
 
-            <div className="p-4 md:p-5 relative">
+            <div className="p-4 relative">
               <pre className="whitespace-pre-wrap text-sm text-white/70 select-none blur-sm">
                 {teaser}
               </pre>
@@ -96,52 +104,30 @@ export default async function PromptPage({
               <div className="absolute inset-0 flex items-center justify-center p-6">
                 <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/70 backdrop-blur px-5 py-5 text-center">
                   <div className="text-base font-semibold">Acesso necessário</div>
-                  <div className="mt-2 text-sm text-white/60">
-                    A imagem é livre. O texto do prompt só desbloqueia após a compra.
-                  </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  <div className="mt-4 flex gap-2 justify-center">
                     <a
                       href={SITE.hotmartUrl}
                       target="_blank"
-                      className="rounded-xl bg-white text-black px-5 py-3 text-sm font-semibold hover:opacity-90"
+                      className="rounded-xl bg-white text-black px-5 py-3 text-sm font-semibold"
                     >
                       Comprar acesso
                     </a>
+
                     <Link
                       href="/acessar"
-                      className="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                      className="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold"
                     >
-                      Já comprei (desbloquear)
+                      Já comprei
                     </Link>
-                  </div>
-
-                  <div className="mt-3 text-xs text-white/50">
-                    Após o desbloqueio, você poderá copiar o prompt completo.
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <a
-              href={SITE.hotmartUrl}
-              target="_blank"
-              className="rounded-xl bg-white text-black px-6 py-3 text-sm font-semibold hover:opacity-90"
-            >
-              Comprar acesso
-            </a>
-            <a
-              href={`mailto:${SITE.contactEmail}`}
-              className="rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold hover:bg-white/5"
-            >
-              Falar no email
-            </a>
-          </div>
-
           <div className="text-xs text-white/50">
-            Dica: após liberar o acesso, use “Copiar” e cole na IA de preferência.
+            Dica: após liberar o acesso, use “Copiar”.
           </div>
         </div>
       </section>
