@@ -14,6 +14,8 @@ export const SITE = {
   tagline: "The AI Image Vault",
   slogan: "Prompts prontos. Resultados profissionais.",
   hotmartUrl: "https://pay.hotmart.com/R104366135O?off=rbia9a6l&bid=1771432296905",
+  // ✅ compat
+  hotmartPayUrl: "https://pay.hotmart.com/R104366135O?off=rbia9a6l&bid=1771432296905",
   contactEmail: "penido@consultant.com",
 };
 
@@ -24,8 +26,7 @@ export const CATEGORIES: { key: Category; label: string; desc: string }[] = [
   { key: "publicidade", label: "PUBLICIDADE", desc: "Produto, anúncio, campanhas e brand." },
 ];
 
-// ✅ Cadastre seus itens aqui.
-// Coloque as imagens em /public/prompts/<categoria>/...
+// Fallback local (caso DB esteja vazio)
 export const PROMPTS: PromptItem[] = [
   {
     id: "homem-01",
@@ -34,29 +35,5 @@ export const PROMPTS: PromptItem[] = [
     image: "/demo.svg",
     prompt: "SEU PROMPT AQUI (bloqueado até pagamento)",
     tags: ["studio", "realista"],
-  },
-  {
-    id: "mulher-01",
-    category: "mulheres",
-    title: "Mulher — Editorial Premium",
-    image: "/demo.svg",
-    prompt: "SEU PROMPT AQUI (bloqueado até pagamento)",
-    tags: ["editorial", "fashion"],
-  },
-  {
-    id: "infantil-01",
-    category: "infantis",
-    title: "Infantil — Cena Lúdica",
-    image: "/demo.svg",
-    prompt: "SEU PROMPT AQUI (bloqueado até pagamento)",
-    tags: ["ludico", "story"],
-  },
-  {
-    id: "publi-01",
-    category: "publicidade",
-    title: "Produto — Anúncio Premium",
-    image: "/demo.svg",
-    prompt: "SEU PROMPT AQUI (bloqueado até pagamento)",
-    tags: ["produto", "ads"],
   },
 ];

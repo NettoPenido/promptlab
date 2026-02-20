@@ -10,30 +10,29 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Formação IA VÍDEO PRO - Aprenda a criar vídeos com Inteligência Artificial",
-  description: "Domine as melhores ferramentas de IA para criar vídeos incríveis, do zero ao avançado. Aprenda ChatGPT, Midjourney, Runway, ElevenLabs e muito mais.",
-  keywords: ["IA", "Inteligência Artificial", "vídeo", "criação de conteúdo", "ChatGPT", "Midjourney", "Runway", "curso"],
-  authors: [{ name: "Tales Ramiro" }],
+  title: "Prompt Lab — The AI Image Vault",
+  description: "Prompts prontos. Resultados profissionais. Biblioteca premium com desbloqueio via Hotmart.",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      // fallback opcional (se quiser criar)
+      // { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   openGraph: {
-    title: "Formação IA VÍDEO PRO",
-    description: "Domine as melhores ferramentas de IA para criar vídeos incríveis",
+    title: "Prompt Lab — The AI Image Vault",
+    description: "Biblioteca premium de prompts com imagens e desbloqueio via Hotmart.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Formação IA VÍDEO PRO",
-    description: "Domine as melhores ferramentas de IA para criar vídeos incríveis",
+    title: "Prompt Lab — The AI Image Vault",
+    description: "Biblioteca premium de prompts com imagens e desbloqueio via Hotmart.",
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
