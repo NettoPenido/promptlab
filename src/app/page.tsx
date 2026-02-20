@@ -14,31 +14,15 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SITE } from "@/content/prompts";
 
 const TIKTOK_URL = "https://www.tiktok.com/@mundopromptia";
 
 // ✅ Troque estes arquivos em /public quando quiser (mantendo o mesmo nome)
-const HERO_IMAGE = "/hero-waldir-bmw.jpg";
-const HERO_BG = "/hero-city-bg.jpg";
+const HERO_IMAGE = "/hero-waldir-bmw.jpg"; // sua foto grande no topo
+const HERO_BG = "/hero-city-bg.jpg"; // opcional: fundo extra
 
-// ====== IAs (logos + links) ======
-// Coloque os logos em /public/ias/ (PNG/SVG) com estes nomes (ou altere abaixo):
-const AI_TOOLS = [
-  { name: "ChatGPT", href: "https://chatgpt.com", logo: "/ias/chatgpt.png" },
-  { name: "Gemini", href: "https://gemini.google.com", logo: "/ias/gemini.png" },
-  { name: "Leonardo", href: "https://leonardo.ai", logo: "/ias/leonardo.png" },
-  { name: "Midjourney", href: "https://www.midjourney.com", logo: "/ias/midjourney.png" },
-  { name: "Adobe Firefly", href: "https://firefly.adobe.com", logo: "/ias/firefly.png" },
-];
-
-// (Opcional) ícone TikTok inline
 function TikTokIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 48 48" fill="none" {...props}>
@@ -55,49 +39,22 @@ const fadeUp = {
   visible: (d = 0) => ({ opacity: 1, y: 0, transition: { delay: d, duration: 0.6 } }),
 };
 
-function AiRow() {
-  return (
-    <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-4 md:p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="text-sm font-semibold text-white/85">IAs compatíveis (foto + prompt)</div>
-        <div className="text-xs text-white/55">Clique para abrir</div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-3">
-        {AI_TOOLS.map((t) => (
-          <a
-            key={t.name}
-            href={t.href}
-            target="_blank"
-            rel="noreferrer"
-            className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white/80 hover:bg-white/5"
-            title={t.name}
-          >
-            {/* usa <img> aqui para não depender do next/image para assets pequenos */}
-            <img
-              src={t.logo}
-              alt={`${t.name} logo`}
-              className="h-6 w-6 rounded-md object-contain bg-white/5 ring-1 ring-white/10"
-              loading="lazy"
-              onError={(e) => {
-                // fallback visual caso o logo não exista
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
-            />
-            <span className="font-medium">{t.name}</span>
-            <ExternalLink className="h-4 w-4 opacity-60 group-hover:opacity-80" />
-          </a>
-        ))}
-      </div>
-
-      <div className="mt-3 text-xs text-white/55">
-        Dica: abra a IA, envie sua foto e depois cole o prompt do Prompt Lab.
-      </div>
-    </div>
-  );
+// Favicon/Logo “sem fundo” via Google (não precisa baixar imagem)
+function googleFavicon(domain: string, size = 64) {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}`;
 }
 
+const AI_TOOLS = [
+  { name: "ChatGPT", url: "https://chatgpt.com", domain: "chatgpt.com" },
+  { name: "Gemini", url: "https://gemini.google.com", domain: "gemini.google.com" },
+  { name: "Leonardo AI", url: "https://leonardo.ai", domain: "leonardo.ai" },
+  { name: "Midjourney", url: "https://www.midjourney.com", domain: "midjourney.com" },
+  { name: "Adobe Firefly", url: "https://firefly.adobe.com", domain: "firefly.adobe.com" },
+];
+
 export default function HomePage() {
+  const hotmartPay = (SITE as any).hotmartPayUrl || SITE.hotmartUrl;
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05060a] text-white">
       {/* Cinematic background */}
@@ -135,10 +92,9 @@ export default function HomePage() {
             <ExternalLink className="h-4 w-4 opacity-60" />
           </a>
 
-          {/* ✅ BOTÃO PREMIUM COM DESTAQUE (neon) */}
+          {/* ✅ Botão premium com destaque neon */}
           <a
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-black
-                       shadow-[0_0_24px_rgba(16,255,120,0.35)] hover:bg-emerald-300"
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-400/95 px-4 py-2 text-sm font-semibold text-black shadow-[0_0_0_1px_rgba(16,185,129,0.55),0_0_28px_rgba(16,185,129,0.22)] hover:bg-emerald-300"
             href={SITE.hotmartUrl}
             target="_blank"
             rel="noreferrer"
@@ -167,13 +123,12 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              {/* ✅ BOTÃO PREMIUM COM DESTAQUE (neon) */}
+              {/* ✅ Botão premium com destaque neon */}
               <a
                 href={SITE.hotmartUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-semibold text-black
-                           shadow-[0_0_30px_rgba(16,255,120,0.35)] hover:bg-emerald-300"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-400/95 px-5 py-3 text-sm font-semibold text-black shadow-[0_0_0_1px_rgba(16,185,129,0.55),0_0_34px_rgba(16,185,129,0.18)] hover:bg-emerald-300"
               >
                 COMPRAR ACESSO PREMIUM <ArrowRight className="h-4 w-4" />
               </a>
@@ -216,7 +171,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CATEGORIAS */}
+      {/* Categorias - estilo Netflix */}
       <section id="categorias" className="relative mx-auto max-w-6xl px-6 py-14 md:py-20">
         <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
           <div className="text-xs tracking-[0.4em] text-white/50">CATEGORIAS</div>
@@ -226,32 +181,48 @@ export default function HomePage() {
             aprovado via Hotmart.
           </p>
 
-          {/* ✅ (1) VOLTA AS IAs LOGO ABAIXO DE CATEGORIAS */}
-          <AiRow />
+          {/* ✅ IAs (logos clicáveis) — EXATAMENTE logo abaixo de CATEGORIAS */}
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            {AI_TOOLS.map((tool) => (
+              <a
+                key={tool.name}
+                href={tool.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
+                title={`Abrir ${tool.name}`}
+              >
+                <span className="relative h-5 w-5 overflow-hidden rounded-full ring-1 ring-white/10 bg-transparent">
+                  <Image src={googleFavicon(tool.domain, 64)} alt="" fill className="object-contain" />
+                </span>
+                {tool.name}
+                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+              </a>
+            ))}
+          </div>
 
-          {/* ✅ (3) COPY PROMPT INDIVIDUAL R$ 4,99 (uma linha abaixo do enunciado) */}
-          <div className="mt-6 rounded-3xl border border-emerald-400/25 bg-emerald-400/10 p-5">
+          {/* ✅ Oferta: prompt individual (R$ 4,99) — uma linha abaixo do enunciado */}
+          <div className="mt-5 rounded-3xl border border-white/10 bg-emerald-400/10 p-5 ring-1 ring-emerald-300/25 shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="text-sm font-semibold text-white/90">
-                  Quer só 1 prompt específico?
+                <div className="text-xs tracking-[0.35em] text-emerald-200/90">NOVIDADE</div>
+                <div className="mt-2 text-lg font-semibold tracking-tight">
+                  Quer só 1 prompt específico?{" "}
+                  <span className="text-emerald-200">Compre individual por R$ 4,99</span>
                 </div>
-                <div className="mt-1 text-sm text-white/70">
-                  Compre um prompt individual por <span className="text-white font-semibold">R$ 4,99</span>. Você solicita por email e eu te envio o prompt + a imagem correspondente.
-                </div>
+                <p className="mt-1 text-sm text-white/70">
+                  Você escolhe o prompt, eu te envio o link correspondente e libero o acesso desse item.
+                </p>
               </div>
 
               <a
-                href={`mailto:${SITE.contactEmail}?subject=Quero%201%20prompt%20individual%20(R%24%204%2C99)&body=Olá%2C%20quero%20comprar%201%20prompt%20individual%20por%20R%24%204%2C99.%0A%0ACategoria%3A%20%0ATítulo%20ou%20descrição%3A%20%0A%0AImagem%20(referência%20ou%20ideia)%3A%20%0A%0AObrigado!`}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-semibold text-black
-                           shadow-[0_0_28px_rgba(16,255,120,0.30)] hover:bg-emerald-300"
+                href={`mailto:${SITE.contactEmail}?subject=${encodeURIComponent("Quero comprar 1 prompt (R$ 4,99)")}&body=${encodeURIComponent(
+                  "Oi! Quero comprar 1 prompt individual por R$ 4,99.\n\nMe diga qual categoria e o nome do prompt:\n- Categoria:\n- Nome do prompt:\n\nMeu email para liberar acesso é:\n"
+                )}`}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-400/95 px-5 py-3 text-sm font-semibold text-black hover:bg-emerald-300"
               >
-                Solicitar por email <ArrowRight className="h-4 w-4" />
+                Solicitar por e-mail <ArrowRight className="h-4 w-4" />
               </a>
-            </div>
-
-            <div className="mt-3 text-xs text-white/55">
-              Obs.: o pacote Premium continua sendo o melhor custo-benefício para desbloquear tudo de uma vez.
             </div>
           </div>
         </motion.div>
@@ -299,6 +270,7 @@ export default function HomePage() {
                   fill
                   className="object-cover opacity-90 transition duration-500 group-hover:scale-[1.04]"
                   sizes="(max-width: 768px) 100vw, 50vw"
+                  priority={false}
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,.82),rgba(0,0,0,.35),rgba(0,0,0,.10))]" />
                 <div className="absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.16),transparent_55%)]" />
@@ -317,6 +289,7 @@ export default function HomePage() {
                   </span>
                 </div>
 
+                {/* badges em UMA linha */}
                 <div className="mt-4 flex flex-nowrap items-center gap-2 overflow-hidden">
                   <span className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-[11px] font-medium ring-1 ${cat.accent}`}>
                     Imagens + Prompt
@@ -334,9 +307,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ====== SEÇÕES QUE VOCÊ DISSE QUE SUMIRAM: MANTIDAS / VOLTANDO ====== */}
-
-      {/* Criatividade / processo */}
+      {/* Long-form sections (inspiração cinematográfica) */}
       <section className="relative mx-auto max-w-6xl px-6 py-14 md:py-20">
         <div className="grid items-center gap-10 md:grid-cols-2">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
@@ -351,8 +322,8 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="mt-4 text-white/70 md:text-lg">
-              A diferença entre quem cresce e quem trava está em saber usar as ferramentas certas — e ter prompts prontos,
-              testados e organizados.
+              A diferença entre quem cresce e quem trava está em saber usar as ferramentas certas — e ter prompts
+              prontos, testados e organizados.
             </p>
 
             <div className="mt-6 grid gap-3 text-sm text-white/70">
@@ -376,6 +347,7 @@ export default function HomePage() {
                 width={900}
                 height={1200}
                 className="h-full w-full object-cover"
+                priority={false}
               />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.20),transparent_35%),radial-gradient(circle_at_90%_30%,rgba(217,70,239,0.18),transparent_40%)]" />
             </div>
@@ -383,7 +355,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Sobre você + LinkedIn */}
       <section className="relative mx-auto max-w-6xl px-6 py-14 md:py-20">
         <div className="grid items-center gap-10 md:grid-cols-2">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
@@ -396,8 +367,8 @@ export default function HomePage() {
               ?
             </h2>
             <p className="mt-4 text-white/70 md:text-lg">
-              Especialista em IA e Marketing Digital para Negócios | MBA em Engenharia de Prompt | Consultor Estratégico | Gestão de Tráfego |
-              Automação | Performance e Escala
+              Especialista em IA e Marketing Digital para Negócios | MBA em Engenharia de Prompt | Consultor Estratégico
+              | Ajudo Empresas a Crescer com IA e Marketing Digital | Gestor de Tráfego | Automação | Performance e Escala
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -438,7 +409,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Recuperação de fotos antigas + casal casamento */}
       <section className="relative mx-auto max-w-6xl px-6 py-14 md:py-20">
         <div className="grid items-center gap-10 md:grid-cols-2">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
@@ -453,15 +423,16 @@ export default function HomePage() {
               Sabe aquela foto antiga da família, casamento, formatura… com baixa qualidade? Aqui você encontra prompts
               prontos para restaurar, colorizar e melhorar nitidez mantendo a identidade e os detalhes originais.
             </p>
-
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
               <div className="flex items-center gap-2 font-medium text-white/80">
                 <Lock className="h-4 w-4 text-amber-200" /> Dica rápida (leigo)
               </div>
               <ol className="mt-3 list-decimal space-y-2 pl-5">
-                <li>Abra sua IA (Gemini/ChatGPT/Leonardo/etc.).</li>
+                <li>Abra sua IA (Gemini/NanoBanana, ChatGPT, etc.).</li>
                 <li>Envie a foto antiga (a imagem).</li>
-                <li>Clique em <b>Copiar prompt</b> aqui no Prompt Lab e cole na IA.</li>
+                <li>
+                  Clique em <b>Copiar prompt</b> aqui no Prompt Lab e cole na IA.
+                </li>
                 <li>Gere e salve a versão restaurada.</li>
               </ol>
             </div>
@@ -481,7 +452,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Fitness / musculação */}
       <section className="relative mx-auto max-w-6xl px-6 py-14 md:py-20">
         <div className="grid items-center gap-10 md:grid-cols-2">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
@@ -524,7 +494,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Depoimentos */}
       <section className="relative mx-auto max-w-6xl px-6 py-14 md:py-20">
         <div className="text-xs tracking-[0.4em] text-white/50">DEPOIMENTOS</div>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-4xl">
@@ -557,7 +526,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FAQ */}
       <section className="relative mx-auto max-w-6xl px-6 pb-20">
         <div className="text-xs tracking-[0.4em] text-white/50">FAQ</div>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-4xl">Dúvidas rápidas</h2>
@@ -567,15 +535,36 @@ export default function HomePage() {
             {[
               {
                 q: "Como eu uso os prompts (sou iniciante)?",
-                a: "1) Clique em uma categoria. 2) Abra um item. 3) Clique em “Copiar prompt”. 4) Abra sua IA (ChatGPT/Gemini/Leonardo/etc.), envie sua foto e cole o prompt. 5) Gere e baixe a imagem.",
+                a: "1) Clique em uma categoria. 2) Abra um item. 3) Clique em “Copiar prompt”. 4) Abra sua IA (ChatGPT/Gemini/NanoBanana/Leonardo/etc.), envie sua foto e cole o prompt. 5) Gere e baixe a imagem.",
               },
-              { q: "Eu preciso saber design ou edição?", a: "Não. O Prompt Lab já entrega prompts prontos com instruções de câmera, luz e estilo. Você só copia e cola." },
-              { q: "O prompt aparece para todo mundo?", a: "Não. O texto do prompt fica protegido. Após pagamento aprovado na Hotmart, o acesso é liberado automaticamente." },
-              { q: "Quais IAs aceitam foto + prompt?", a: "ChatGPT (Imagem), Gemini, Leonardo AI, Adobe Firefly (em alguns modos), Midjourney (via upload + prompt). Cada plataforma tem regras próprias." },
-              { q: "Quantos prompts eu vou ter acesso?", a: "Mais de 1.000 prompts profissionais, organizados em HOMENS, MULHERES, INFANTIS e PUBLICIDADE." },
-              { q: "Como funciona o botão copiar?", a: "Você clica e o texto vai para a área de transferência. Depois é só colar na IA com Ctrl+V (ou toque e segure no celular)." },
-              { q: "Posso usar em celular?", a: "Sim. No celular: abra o item → toque em “Copiar prompt” → abra sua IA → envie a foto → cole o prompt." },
-              { q: "Preciso de suporte?", a: "Se travar em qualquer passo, fale no email de contato. A gente te orienta para rodar o prompt do jeito certo." },
+              {
+                q: "Eu preciso saber design ou edição?",
+                a: "Não. O Prompt Lab já entrega prompts prontos com instruções de câmera, luz e estilo. Você só copia e cola.",
+              },
+              {
+                q: "O prompt aparece para todo mundo?",
+                a: "Não. O texto do prompt fica protegido. Após pagamento aprovado na Hotmart, o acesso é liberado automaticamente.",
+              },
+              {
+                q: "Quais IAs aceitam foto + prompt?",
+                a: "ChatGPT (Imagem), Gemini (NanoBanana), Leonardo AI, Adobe Firefly (em alguns modos), Midjourney (via upload + prompt). Cada plataforma tem regras próprias.",
+              },
+              {
+                q: "Quantos prompts eu vou ter acesso?",
+                a: "Mais de 1.000 prompts profissionais, organizados em HOMENS, MULHERES, INFANTIS e PUBLICIDADE.",
+              },
+              {
+                q: "Como funciona o botão copiar?",
+                a: "Você clica e o texto vai para a área de transferência. Depois é só colar na IA com Ctrl+V (ou toque e segure no celular).",
+              },
+              {
+                q: "Posso usar em celular?",
+                a: "Sim. No celular: abra o item → toque em “Copiar prompt” → abra sua IA → envie a foto → cole o prompt.",
+              },
+              {
+                q: "Preciso de suporte?",
+                a: "Se travar em qualquer passo, fale no email de contato. A gente te orienta para rodar o prompt do jeito certo.",
+              },
             ].map((f, idx) => (
               <AccordionItem key={idx} value={`item-${idx}`} className="border-white/10">
                 <AccordionTrigger className="text-left text-white/85">{f.q}</AccordionTrigger>
@@ -594,12 +583,12 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            {/* ✅ Botão premium com destaque */}
             <a
-              href={SITE.hotmartUrl}
+              href={hotmartPay}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-black
-                         shadow-[0_0_26px_rgba(16,255,120,0.30)] hover:bg-emerald-300"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-400/95 px-5 py-3 text-sm font-semibold text-black shadow-[0_0_0_1px_rgba(16,185,129,0.55),0_0_34px_rgba(16,185,129,0.18)] hover:bg-emerald-300"
             >
               Comprar premium <ArrowRight className="h-4 w-4" />
             </a>
@@ -637,12 +626,12 @@ export default function HomePage() {
               <ExternalLink className="h-4 w-4 opacity-60" />
             </a>
 
+            {/* ✅ Botão premium com destaque neon */}
             <a
               href={SITE.hotmartUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-2 font-semibold text-black
-                         shadow-[0_0_22px_rgba(16,255,120,0.28)] hover:bg-emerald-300"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-400/95 px-4 py-2 font-semibold text-black shadow-[0_0_0_1px_rgba(16,185,129,0.55),0_0_30px_rgba(16,185,129,0.18)] hover:bg-emerald-300"
             >
               Comprar premium <ArrowRight className="h-4 w-4" />
             </a>
