@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import Image from "next/image";
 import Link from "next/link";
@@ -30,9 +30,9 @@ type Item = {
   imageUrl?: string;
   focusX?: number;
   focusY?: number;
+  fitMode?: string; // "cover" | "contain"
 
-  fitMode?: "cover" | "contain" | string;
-
+  category?: string;
   prompt?: string;
 };
 
@@ -41,13 +41,13 @@ export default function CategoryGridClient({ items }: { items: Item[] }) {
     return (items || []).map((it) => {
       const fx = Number.isFinite(Number(it.focusX)) ? Number(it.focusX) : 50;
       const fy = Number.isFinite(Number(it.focusY)) ? Number(it.focusY) : 25;
-      const fit = String(it.fitMode || "cover").toLowerCase() === "contain" ? "contain" : "cover";
+      const mode = String(it.fitMode || "cover").toLowerCase() === "contain" ? "contain" : "cover";
 
       return {
         ...it,
         image: safeImageSrc(it.imageUrl || ""),
         imageFocus: `${fx}% ${fy}%`,
-        fitMode: fit,
+        fitMode: mode as "cover" | "contain",
       };
     });
   }, [items]);
@@ -60,7 +60,7 @@ export default function CategoryGridClient({ items }: { items: Item[] }) {
           className="group rounded-3xl border border-white/10 bg-white/[0.03] overflow-hidden shadow-[0_20px_120px_rgba(0,0,0,0.7)] hover:border-white/20 transition"
         >
           <Link href={`/prompt/${it.id}`} className="block">
-            <div className="relative aspect-[16/9] bg-black">
+            <div className="relative aspect-[16/9] bg-black/40">
               <Image
                 src={(it as any).image}
                 alt={it.title}
@@ -68,11 +68,10 @@ export default function CategoryGridClient({ items }: { items: Item[] }) {
                 sizes="(max-width: 1024px) 100vw, 33vw"
                 className="transition-transform duration-500 group-hover:scale-[1.06]"
                 style={{
-                  objectFit: (it as any).fitMode, // cover | contain
-                  objectPosition: (it as any).fitMode === "contain" ? "center" : (it as any).imageFocus,
+                  objectFit: it.fitMode === "contain" ? "contain" : "cover",
+                  objectPosition: it.imageFocus,
                 }}
               />
-
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
             </div>
 
