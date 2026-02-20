@@ -46,7 +46,7 @@ model PromptItem {
   // Isso mapeia SEM quebrar nada.
   isActive Boolean @default(true) @map("isPublished")
 
-  // ✅ NOVO: controla a ordem no catálogo (menor = primeiro)
+  // ✅ ORDEM MANUAL (menor = primeiro)
   sortOrder Int @default(0)
 
   createdAt DateTime @default(now())
