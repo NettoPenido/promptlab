@@ -15,6 +15,7 @@ function normalizeCategory(input: unknown) {
 function slugify(input: string) {
   return input
     .toLowerCase()
+    .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
@@ -24,11 +25,10 @@ function slugify(input: string) {
 
 export async function GET(req: Request) {
   try {
-    const secret = (process.env.ADMIN_SECRET || "").trim();
+    const secret = process.env.ADMIN_SECRET || "";
     if (!secret) return NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 });
 
     const incoming = getAdminSecret(req);
-    if (!incoming) return NextResponse.json({ error: "Missing x-admin-secret header" }, { status: 401 });
     if (incoming !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const items = await prisma.promptItem.findMany({
@@ -43,11 +43,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const secret = (process.env.ADMIN_SECRET || "").trim();
+    const secret = process.env.ADMIN_SECRET || "";
     if (!secret) return NextResponse.json({ error: "ADMIN_SECRET not configured" }, { status: 500 });
 
     const incoming = getAdminSecret(req);
-    if (!incoming) return NextResponse.json({ error: "Missing x-admin-secret header" }, { status: 401 });
     if (incoming !== secret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json().catch(() => null);
@@ -58,11 +57,15 @@ export async function POST(req: Request) {
     const imageUrl = String(body.imageUrl ?? "").trim();
     const category = normalizeCategory(body.category);
 
-    // UI chama de "Ativo", mas no DB é isPublished
     const isPublished = Boolean(body.isPublished ?? body.isActive ?? true);
 
-    const focusX = Number.isFinite(Number(body.focusX)) ? Math.max(0, Math.min(100, Math.round(Number(body.focusX)))) : 50;
-    const focusY = Number.isFinite(Number(body.focusY)) ? Math.max(0, Math.min(100, Math.round(Number(body.focusY)))) : 25;
+    const focusX = Number.isFinite(Number(body.focusX))
+      ? Math.max(0, Math.min(100, Math.round(Number(body.focusX))))
+      : 50;
+
+    const focusY = Number.isFinite(Number(body.focusY))
+      ? Math.max(0, Math.min(100, Math.round(Number(body.focusY))))
+      : 25;
 
     if (!title) return NextResponse.json({ error: "Título obrigatório." }, { status: 400 });
     if (!prompt) return NextResponse.json({ error: "Prompt obrigatório." }, { status: 400 });
@@ -75,14 +78,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const slug = String(body.slug ?? "").trim() || slugify(String(body.id ?? "").trim() || title);
+    const slug = slugify(String(body.slug ?? body.id ?? title));
     if (!slug) return NextResponse.json({ error: "Slug inválido." }, { status: 400 });
 
     const created = await prisma.promptItem.create({
       data: {
         slug,
         title,
-        category,
+        category: category as any,
         imageUrl,
         focusX,
         focusY,
@@ -93,7 +96,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ item: created }, { status: 201 });
   } catch (err: any) {
-    // Se slug duplicar, o Prisma vai acusar unique constraint.
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
 }
